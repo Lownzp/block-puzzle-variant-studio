@@ -38,3 +38,4 @@ benchmark_no_coalesce_result.json
 *.avi
 *.mkv
 *.webm
+*.bundle
