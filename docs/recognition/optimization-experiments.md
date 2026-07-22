@@ -155,3 +155,42 @@ python scripts/run_recognition_experiments.py benchmark_experiments/color_block_
 
 - 当前真实动作里仍有较多 `sourceSlot = -1` 或来源槽位证据不足的情况，硬性过滤会把真实动作一起删掉。
 - 下一步不能先靠事件级硬过滤兜底，应优先加强“放置后棋盘状态”和“动作候选证据”的质量评分，再用 FSM 做软评分或冲突复核。
+
+### EXP-20260722-03: 稳定态评分与单帧阴影 refine
+
+- Commit: 本提交
+- 测试集: DEV-004、DEV-008
+- 启用开关: `stable_state_scoring`、`single_frame_shadow_refine`，以及二者组合
+- 对照基线: `benchmark_experiments/color_probe_remaining_20260722/summary.md`
+- 是否进入默认路径: 否。`stable_state_scoring` 为负向优化；`single_frame_shadow_refine` 在本测试集无变化。
+
+| 指标 | baseline | stable_state_scoring | single_frame_shadow_refine | combined |
+|---|---:|---:|---:|---:|
+| predicted | 45 | 36 | 45 | 36 |
+| truth | 52 | 52 | 52 | 52 |
+| matched | 44 | 34 | 44 | 34 |
+| false positive | 1 | 2 | 1 | 2 |
+| missed | 8 | 18 | 8 | 18 |
+| precision | 97.78% | 94.44% | 97.78% | 94.44% |
+| recall | 84.62% | 65.38% | 84.62% | 65.38% |
+| slot accuracy | 93.18% | 94.12% | 93.18% | 94.12% |
+| shape accuracy | 81.82% | 79.41% | 81.82% | 79.41% |
+| target accuracy | 90.91% | 88.24% | 90.91% | 88.24% |
+| clear accuracy | 81.82% | 82.36% | 81.82% | 82.36% |
+| time MAE | 0.1261s | 0.2103s | 0.1261s | 0.2103s |
+| within two frames | 86.36% | 70.59% | 86.36% | 70.59% |
+
+变好样本：
+
+- 无整体变好样本。`single_frame_shadow_refine` 与 baseline 完全一致。
+
+变差样本：
+
+- DEV-004: `stable_state_scoring` 从 30/30 全匹配降到 24/30，漏检 6 个。
+- DEV-008: `stable_state_scoring` 从 matched 14 降到 10，missed 从 8 增加到 12。
+
+结论：
+
+- 当前稳定态评分阈值会把真实短动作一起过滤掉，不能进入默认路径。
+- 单帧阴影 refine 在 DEV-004/DEV-008 上没有触发有效差异，说明这两个样本里的主问题不是单帧 `_cell_shadow_like` 阈值，而是动作候选和放置后状态解释。
+- 后续优化方向应从“稳定态硬过滤”改为“候选保留 + 质量打分 + 人工界面展示分歧”，避免召回率继续下降。

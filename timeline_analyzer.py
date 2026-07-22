@@ -312,6 +312,7 @@ def _board_state(
     frame, board, rows, cols, appearance_profile=None,
     occupied_cell_validator=None,
     occupancy_model=None,
+    refine_shadow=False,
 ):
     import cv2
     import numpy as np
@@ -328,6 +329,8 @@ def _board_state(
         for col in range(cols):
             hsv_cell, gray_cell = cells[row][col]
             hue = _cell_hue(hsv_cell)
+            if refine_shadow and hue is not None and _cell_shadow_like(hsv_cell, gray_cell):
+                hue = None
             model_decided = False
             if occupancy_model:
                 features = extract_cell_features(hsv_cell, gray_cell)
@@ -830,6 +833,35 @@ def _sample_cache_summary(samples, rows, cols):
             "motion": round(motion_score, 4),
         })
     return summary
+
+
+def _stable_run_quality(run, rows, cols):
+    motion_values = []
+    for sample in run:
+        motion = sample.get("boardMotion") or []
+        if not motion:
+            continue
+        motion_values.extend(float(cell) for line in motion for cell in line)
+    mean_motion = sum(motion_values) / max(1, len(motion_values))
+    max_motion = max(motion_values) if motion_values else 0.0
+    alignments = [float(sample.get("gridAlignment", 0.0) or 0.0) for sample in run]
+    return {
+        "frameCount": len(run),
+        "meanMotion": round(mean_motion, 4),
+        "maxMotion": round(max_motion, 4),
+        "gridAlignment": round(sum(alignments) / max(1, len(alignments)), 4),
+        "occupied": sum(run[len(run) // 2]["board"][row][col] is not None for row in range(rows) for col in range(cols)),
+    }
+
+
+def _should_keep_scored_stable_run(run, rows, cols, min_stable_frames):
+    quality = _stable_run_quality(run, rows, cols)
+    short_run = quality["frameCount"] <= min_stable_frames + 1
+    moving_run = quality["meanMotion"] >= 0.035 or quality["maxMotion"] >= 0.18
+    weak_grid = 0.0 < quality["gridAlignment"] < 1.05
+    keep = not (short_run and (moving_run or weak_grid))
+    reason = None if keep else "short_moving_or_weak_grid_run"
+    return keep, quality, reason
 
 
 def _group_layout_signature(groups):
@@ -2870,6 +2902,10 @@ def build_timeline(
                 "board": _board_state(
                     frame, board, rows, cols, appearance_profile,
                     occupancy_model=occupancy_model,
+                    refine_shadow=bool(
+                        color_profile_enabled
+                        and experiment_flags.is_enabled("single_frame_shadow_refine")
+                    ),
                 ),
                 "groups": _bottom_groups(
                     frame,
@@ -2886,6 +2922,10 @@ def build_timeline(
                     frame, board, rows, cols,
                     occupied_cell_validator=occupied_cell_validator,
                     occupancy_model=validator_occupancy_model,
+                    refine_shadow=bool(
+                        color_profile_enabled
+                        and experiment_flags.is_enabled("single_frame_shadow_refine")
+                    ),
                 )
             if repeated_board_evidence_enabled and len(samples) % repeated_detection_stride == 0:
                 sample["repeatedBoardEvidence"] = _repeated_round_board_evidence(
@@ -2938,9 +2978,26 @@ def build_timeline(
         runs.append(active)
     min_stable_frames = max(3, round(actual_sample_fps * 0.13))
     stable_states = []
+    stable_state_scoring_diagnostics = []
     for run in runs:
         if len(run) < min_stable_frames:
             continue
+        if color_profile_enabled and experiment_flags.is_enabled("stable_state_scoring"):
+            keep_run, run_quality, discard_reason = _should_keep_scored_stable_run(
+                run,
+                rows,
+                cols,
+                min_stable_frames,
+            )
+            if not keep_run:
+                stable_state_scoring_diagnostics.append({
+                    "startTime": run[0]["time"],
+                    "endTime": run[-1]["time"],
+                    "frameIndex": run[len(run) // 2]["frameIndex"],
+                    "reason": discard_reason,
+                    **run_quality,
+                })
+                continue
         representative = run[len(run) // 2]
         stable_states.append({
             "stateIndex": len(stable_states),
@@ -3957,6 +4014,8 @@ def build_timeline(
             "afterTailFilterCount": after_tail_filter_count,
             "afterDragCollapseCount": after_drag_collapse_count,
             "afterFragmentCoalesceCount": after_fragment_coalesce_count,
+            "stableStateScoringDiscardCount": len(stable_state_scoring_diagnostics),
+            "stableStateScoring": stable_state_scoring_diagnostics,
             "fsmEventConstraintDiscardCount": len(fsm_discarded_events),
             "fsmEventConstraints": fsm_discarded_events,
             "colorCooldownFragmentCount": len(color_cooldown_fragments),
