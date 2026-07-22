@@ -31,3 +31,15 @@
 - Vendor browser dependencies under `vendor/` with pinned versions and license files. The local application must not require a CDN or live internet connection at runtime.
 - For specialist components, prefer projects with active maintenance, clear licensing, accessible behavior, published releases, and substantial real-world usage. Record the choice in the implementation plan.
 - Every component integration must be tested through its public API. Do not modify vendored library source code.
+
+## Git And GitHub Workflow
+
+- The canonical remote is `origin` at `https://github.com/Lownzp/block-puzzle-variant-studio.git`; the main branch is `main`.
+- Before committing, run `git status --short --branch` and review the staged file list. Do not commit generated videos, benchmark output, task folders, local datasets, logs, caches, Unity build output, or other bulky runtime artifacts.
+- Keep `.gitignore` updated when new generated folders or local backup files appear. Do not track `*.bundle`, `benchmark*/`, `视频重建任务/`, `变体视频/`, `数据集/`, `测试素材/`, `校准/`, `改造客户端/`, or `客户端改造分析/`.
+- Before pushing code changes, run the relevant verification commands. At minimum for Python/frontend bridge work, run `python -m py_compile variant_bridge.py timeline_analyzer.py recording_finalizer.py reanalyze_truth_set.py` and `python -m unittest -q`.
+- Use concise imperative commit messages, for example `Add debug fps analyzer` or `Fix replay aspect crop`.
+- This machine's Git may not automatically use the system proxy. If GitHub HTTPS fails with TLS reset, configure the repository proxy with:
+  - `git config http.proxy http://127.0.0.1:7897`
+  - `git config https.proxy http://127.0.0.1:7897`
+- After pushing, verify the remote branch with `git ls-remote origin refs/heads/main` or confirm `git status --short --branch` shows `main...origin/main` with no ahead commits.
