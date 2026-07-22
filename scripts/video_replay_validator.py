@@ -1,5 +1,15 @@
-"""Validate a rendered replay by exact ordered 8x8 occupancy masks."""
+﻿"""Validate a rendered replay by exact ordered 8x8 occupancy masks."""
+
+
 from __future__ import annotations
+
+
+from pathlib import Path
+import sys
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 import json
 import sys

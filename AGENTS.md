@@ -37,7 +37,7 @@
 - The canonical remote is `origin` at `https://github.com/Lownzp/block-puzzle-variant-studio.git`; the main branch is `main`.
 - Before committing, run `git status --short --branch` and review the staged file list. Do not commit generated videos, benchmark output, task folders, local datasets, logs, caches, Unity build output, or other bulky runtime artifacts.
 - Keep `.gitignore` updated when new generated folders or local backup files appear. Do not track `*.bundle`, `benchmark*/`, `视频重建任务/`, `变体视频/`, `数据集/`, `测试素材/`, `校准/`, `改造客户端/`, or `客户端改造分析/`.
-- Before pushing code changes, run the relevant verification commands. At minimum for Python/frontend bridge work, run `python -m py_compile variant_bridge.py timeline_analyzer.py recording_finalizer.py reanalyze_truth_set.py` and `python -m unittest -q`.
+- Before pushing code changes, run the relevant verification commands. At minimum for Python/frontend bridge work, run `python -m py_compile variant_bridge.py timeline_analyzer.py recording_finalizer.py scripts/reanalyze_truth_set.py` and `python -m unittest discover -s tests -q`.
 - Use concise imperative commit messages, for example `Add debug fps analyzer` or `Fix replay aspect crop`.
 - This machine's Git may not automatically use the system proxy. If GitHub HTTPS fails with TLS reset, configure the repository proxy with:
   - `git config http.proxy http://127.0.0.1:7897`
