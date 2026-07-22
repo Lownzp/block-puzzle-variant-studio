@@ -24,6 +24,27 @@
 
 ## Experiment Template
 
+## Runner Usage
+
+从项目根目录运行：
+
+```powershell
+python scripts/run_recognition_experiments.py benchmark_experiments/color_block_YYYYMMDD `
+  --only DEV-001 DEV-002 DEV-003 DEV-004 DEV-006 DEV-008 DEV-011 DEV-012 `
+  --single-flags temporal_candidate_cache stable_state_scoring fsm_event_constraints cell_temporal_voting single_frame_shadow_refine `
+  --combined temporal_candidate_cache stable_state_scoring
+```
+
+输出目录会包含：
+
+- `baseline/`：默认路径预测结果
+- `<flag>/`：单项优化预测结果
+- `combined/`：组合优化预测结果
+- `summary.json`：机器可读汇总
+- `summary.md`：人工阅读汇总
+
+优化项进入默认路径前，必须把 `summary.md` 的关键结论追加到本文件对应实验小节。
+
 ### EXP-YYYYMMDD-NN: 优化项名称
 
 - Commit:

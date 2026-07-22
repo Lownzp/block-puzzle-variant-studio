@@ -16,6 +16,7 @@ import argparse
 import json
 from pathlib import Path
 
+from recognition_experiments import parse_flags
 from truth_benchmark import initial_draft, latest_truth_tasks
 from variant_bridge import analyse_video, build_action_review
 
@@ -25,7 +26,10 @@ def main() -> None:
     parser.add_argument("output", type=Path)
     parser.add_argument("--only", nargs="*", default=[])
     parser.add_argument("--strategy", default="legacy")
+    parser.add_argument("--flags", nargs="*", default=[])
+    parser.add_argument("--label", default="")
     args = parser.parse_args()
+    experiment_flags = parse_flags(args.flags)
     args.output = args.output.resolve()
     args.output.mkdir(parents=True, exist_ok=True)
     for task in latest_truth_tasks():
@@ -41,6 +45,7 @@ def main() -> None:
             task_output,
             board_override=board,
             recognition_strategy=args.strategy,
+            experiment_flags=experiment_flags,
         )
         timeline = json.loads((task_output / "步骤时间线.json").read_text(encoding="utf-8"))
         payload = {
@@ -49,6 +54,10 @@ def main() -> None:
             "actions": timeline["events"],
             "reviewActions": build_action_review(timeline),
             "recognitionStrategy": analysis.get("recognitionStrategy"),
+            "experiment": {
+                "label": args.label,
+                "flags": experiment_flags.as_list(),
+            },
             "processingDiagnostics": timeline.get("processingDiagnostics", {}),
             "cancelledDrags": timeline.get("cancelledDrags", []),
             "discardedTailCandidates": timeline.get("discardedTailCandidates", []),

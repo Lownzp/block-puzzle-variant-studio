@@ -2714,9 +2714,12 @@ def build_timeline(
     cols: int = 10,
     sample_fps: float = 30.0,
     recognition_strategy: str = "legacy",
+    experiment_flags=None,
 ):
     import cv2
+    from recognition_experiments import parse_flags
 
+    experiment_flags = parse_flags(experiment_flags)
     material_profile = infer_material_profile(video_path)
     material_profile_enabled = recognition_strategy == "material_profile_v1"
     color_profile_enabled = recognition_strategy == "color_block_v1" and material_profile == "color_block"
@@ -3808,6 +3811,7 @@ def build_timeline(
     return {
         "recognitionStrategy": recognition_strategy,
         "recognitionVersion": "legacy_soft_occupied_recovery_v21" if recognition_strategy == "legacy" else recognition_strategy,
+        "experimentFlags": experiment_flags.as_metadata(),
         "sampleRate": round(actual_sample_fps, 3),
         "sourceFrameRate": round(fps, 3),
         "grid": {"rows": rows, "cols": cols},

@@ -1494,10 +1494,13 @@ def analyse_video(
     board_override: dict | None = None,
     recognition_strategy: str = "legacy",
     sample_fps_override: float | None = None,
+    experiment_flags=None,
 ) -> dict:
     import cv2
     import numpy as np
+    from recognition_experiments import parse_flags
 
+    experiment_flags = parse_flags(experiment_flags)
     capture = cv2.VideoCapture(str(video_path))
     if not capture.isOpened():
         raise ValueError("无法读取该视频文件")
@@ -1562,6 +1565,7 @@ def analyse_video(
         cols=cols,
         sample_fps=min(fps, sample_fps),
         recognition_strategy=effective_recognition_strategy,
+        experiment_flags=experiment_flags,
     )
     if timeline["stableStates"]:
         initial_board = board_config_from_state(timeline["stableStates"][0]["board"])
@@ -1722,6 +1726,7 @@ def analyse_video(
         "recognitionStrategy": effective_recognition_strategy,
         "requestedRecognitionStrategy": recognition_strategy,
         "debugSampleFps": round(sample_fps, 3) if sample_fps_override is not None else None,
+        "experimentFlags": experiment_flags.as_metadata(),
     }
 
 

@@ -20,6 +20,7 @@ analysis-cache-index.json
 
 # Benchmark and diagnostics output
 benchmark*/
+benchmark_experiments/
 dev*_*/
 diagnostics/
 测试报告/
