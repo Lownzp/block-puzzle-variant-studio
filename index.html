@@ -1,0 +1,799 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>爆款素材变体生成器</title>
+  <link rel="stylesheet" href="vendor/bootstrap/bootstrap.min.css">
+  <link rel="stylesheet" href="vendor/videojs/video-js.min.css">
+  <link rel="stylesheet" href="vendor/vis-timeline/vis-timeline-graph2d.min.css">
+  <link rel="stylesheet" href="vendor/cropperjs/cropper.min.css">
+  <style>
+    :root { --ink:#18212b; --muted:#687582; --line:#dce3e8; --bg:#f5f7f8; --blue:#1769e0; --teal:#117b72; --warn:#a45b00; }
+    * { box-sizing:border-box; } body { margin:0; font:14px/1.45 "Microsoft YaHei",system-ui,sans-serif; color:var(--ink); background:var(--bg); }
+    header { background:#fff; border-bottom:1px solid var(--line); padding:16px 24px; display:flex; justify-content:space-between; align-items:center; gap:16px; position:sticky; top:0; z-index:3; }
+    h1 { font-size:19px; margin:0; } h2 { margin:0; font-size:16px; } .sub { color:var(--muted); font-size:12px; margin-top:3px; }
+    main { max-width:1600px; margin:0 auto; padding:20px 24px 48px; } .grid { display:grid; grid-template-columns:430px 1fr; gap:18px; align-items:start; }
+    .panel { background:#fff; border:1px solid var(--line); border-radius:8px; overflow:hidden; } .panel-head { padding:14px 16px; border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:space-between; gap:10px; }
+    .body { padding:16px; } .toolrow { display:flex; flex-wrap:wrap; gap:8px; } button { border:1px solid #b9c6d0; background:#fff; color:#17202a; border-radius:5px; padding:7px 10px; cursor:pointer; font:inherit; }
+    button:hover { background:#eef5ff; border-color:#80afea; } button.primary { background:var(--blue); border-color:var(--blue); color:#fff; } button.danger { color:#b42828; } button.small { padding:4px 7px; font-size:12px; }
+    form { display:grid; grid-template-columns:1fr 1fr; gap:10px 12px; } label { display:grid; gap:4px; color:#475463; font-size:12px; } label.wide { grid-column:1/-1; }
+    input,select,textarea { min-width:0; width:100%; border:1px solid #cbd5dc; border-radius:5px; padding:7px 8px; font:inherit; color:var(--ink); background:#fff; } textarea { resize:vertical; min-height:54px; }
+    .hint { color:var(--muted); font-size:11px; } .note { background:#f0f7ff; border-left:3px solid #66a7ed; padding:10px; color:#37516c; font-size:12px; margin-top:12px; }
+    table { width:100%; border-collapse:collapse; font-size:12px; } th,td { text-align:left; border-bottom:1px solid #e8edf0; padding:8px; vertical-align:top; } th { color:#62707c; background:#fafbfc; font-weight:600; position:sticky; top:67px; z-index:1; } .scroll { overflow:auto; max-height:470px; }
+    .tag { display:inline-block; padding:2px 6px; border-radius:10px; margin:1px 3px 1px 0; background:#e8f3ff; color:#16549b; white-space:nowrap; } .tag.gold { background:#fff2d8; color:#8d5200; } .tag.gray { background:#edf0f2; color:#53616d; }
+    .empty { padding:36px 16px; color:var(--muted); text-align:center; } .status { min-height:20px; color:var(--teal); font-size:12px; } .split { display:flex; align-items:center; gap:8px; }
+    .toolbar { display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:14px; } .filters { display:flex; gap:8px; align-items:center; flex-wrap:wrap; } .filters input,.filters select { width:auto; min-width:150px; }
+    dialog { border:0; border-radius:10px; padding:0; width:min(720px,94vw); box-shadow:0 18px 60px #0004; } dialog::backdrop { background:#11233366; } dialog .dialog-body { padding:18px; }
+    .app-main[hidden], .annotation-page[hidden] { display: none !important; }
+    button:disabled { opacity:.45; cursor:not-allowed; background:#eef1f3; border-color:#d5dce1; color:#73808a; }
+    .action-review { display:grid; gap:8px; margin-top:12px; }
+    .action-row { display:grid; grid-template-columns:248px 58px 100px 110px 135px 120px 1fr; gap:10px; align-items:center; border:1px solid var(--line); border-radius:6px; padding:9px; background:#fff; }
+    .action-thumb { width:92px; height:164px; object-fit:cover; border:1px solid var(--line); border-radius:4px; display:block; }
+    .evidence-strip { display:grid; grid-template-columns:repeat(4,58px); gap:4px; }
+    .evidence-item { display:grid; gap:2px; color:var(--muted); font-size:10px; text-align:center; }
+    .evidence-item img { width:58px; height:103px; object-fit:cover; border:1px solid var(--line); border-radius:3px; }
+    .evidence-missing { width:58px; height:103px; display:grid; place-items:center; background:#f1f4f6; border:1px dashed #c4ced5; border-radius:3px; color:#87939c; }
+    .action-step { font-weight:700; font-size:13px; }
+    .action-field { display:grid; gap:4px; min-width:0; font-size:11px; color:var(--muted); }
+    .action-field input,.action-field select { padding:5px 6px; font-size:12px; }
+    .shape-grid { display:grid; gap:2px; width:max-content; }
+    .shape-cell { width:22px; height:22px; padding:0; border-radius:3px; background:#f1f4f6; border-color:#d5dde3; }
+    .shape-cell.on { background:#2879df; border-color:#1769e0; }
+    .action-meta { font-size:11px; color:#53616d; line-height:1.55; }
+    .review-actions { display:flex; justify-content:flex-end; align-items:center; gap:10px; margin-top:12px; position:sticky; bottom:0; background:#fff; border-top:1px solid var(--line); padding:10px 0 2px; }
+    .source-calibration { border:1px solid var(--line); padding:10px; margin-top:12px; background:#fafbfc; }
+    .source-calibration-controls { display:grid; grid-template-columns:repeat(6,minmax(70px,1fr)) auto; gap:8px; align-items:end; }
+    .source-frame-wrap { margin-top:8px; position:relative; width:min(430px,100%); }
+    .source-frame-wrap img { width:100%; display:block; border:1px solid var(--line); cursor:crosshair; }
+    .source-board-box { position:absolute; border:2px solid #19a974; background:#19a97418; pointer-events:none; }
+    .placement-editor { grid-column:1/-1; display:grid; grid-template-columns:auto 1fr; gap:14px; align-items:start; padding-top:9px; border-top:1px solid #e5eaee; }
+    .placement-board-panel { display:grid; gap:7px; width:max-content; }
+    .placement-board-legend { display:flex; flex-wrap:wrap; gap:6px; max-width:260px; }
+    .placement-key { display:inline-flex; align-items:center; gap:5px; min-height:24px; padding:3px 7px; border:1px solid #d9e0e7; border-radius:4px; background:#fff; color:#334155; font-size:11px; line-height:1.25; }
+    .placement-swatch { width:12px; height:12px; flex:0 0 12px; border:1px solid #7386a4; border-radius:2px; background:#60728f; }
+    .placement-swatch.preview { border-color:#68d59d; background:#26a269; }
+    .placement-board { display:grid; gap:2px; width:max-content; padding:5px; background:#16243c; border:1px solid #0e1829; }
+    .placement-cell { width:30px; height:30px; padding:0; border:1px solid #35445f; border-radius:2px; background:#21314d; position:relative; }
+    .placement-cell:hover { outline:2px solid #8fc1ff; outline-offset:-2px; }
+    .placement-cell.occupied { background:#60728f; border-color:#7386a4; }
+    .placement-cell.preview { background:#26a269; border-color:#68d59d; }
+    .placement-cell.overlap { background:#d74747; border-color:#ff8b8b; }
+    .placement-cell.complete { box-shadow:inset 0 0 0 2px #f4bf45; }
+    .placement-info { display:grid; gap:6px; align-content:start; font-size:12px; color:#53616d; }
+    .placement-error { color:#b42318; font-weight:600; }
+    .placement-ok { color:#117b72; font-weight:600; }
+    .action-summary-row { display:grid; grid-template-columns:72px 1fr auto auto auto; gap:10px; align-items:center; border:1px solid var(--line); padding:8px 10px; background:#fff; }
+    .action-summary-row .summary-detail { color:#53616d; font-size:12px; }
+    .action-editor-row { border:2px solid #8bb8ed; padding:10px; background:#fafdff; animation:editor-open .12s ease-out; }
+    @keyframes editor-open { from { opacity:0; transform:translateY(-3px); } to { opacity:1; transform:translateY(0); } }
+    .action-summary-row.active { border-color:#1769e0; background:#eef6ff; }
+    .step-toggle { width:30px; height:30px; padding:0; display:grid; place-items:center; border-radius:4px; }
+    .ui-icon { width:18px; height:18px; display:block; stroke-width:2; pointer-events:none; }
+    .step-actions { display:flex; align-items:center; gap:6px; }
+    .step-delete { width:30px; height:30px; padding:0; display:grid; place-items:center; border-radius:4px; color:#b42318; }
+    .step-delete:hover { color:#8f1d15; background:#fff1f0; border-color:#e59b95; }
+    .action-editor-toolbar { display:grid; grid-template-columns:248px 90px 110px minmax(120px,1fr) 130px 120px; gap:10px; align-items:start; }
+    @media(max-width:900px){ .action-editor-toolbar { grid-template-columns:1fr 1fr; } .evidence-strip { grid-column:1/-1; } .action-summary-row { grid-template-columns:64px 1fr auto; } }
+    @media(max-width:600px){ .placement-cell { width:25px; height:25px; } .placement-editor { grid-template-columns:1fr; } }
+    @media(max-width:900px){ .action-row { grid-template-columns:92px 1fr 1fr; } .action-meta { grid-column:2/-1; } }
+    @media(max-width:1040px){ .grid { grid-template-columns:1fr; } header { position:static; } th { top:0; } } @media(max-width:560px){ main{padding:12px;} header{padding:12px;} form{grid-template-columns:1fr;} }
+    .batch-panel { grid-column:1/-1; }
+    .batch-layout { display:grid; grid-template-columns:minmax(300px,420px) 1fr; gap:16px; align-items:start; }
+    .batch-card { border:1px solid var(--line); border-radius:6px; padding:14px; background:#fff; display:grid; gap:12px; }
+    .batch-card h3 { margin:0; font-size:14px; }
+    .batch-grid { display:grid; grid-template-columns:repeat(2,minmax(160px,1fr)); gap:10px 12px; }
+    .batch-checks { display:flex; flex-wrap:wrap; gap:8px; }
+    .batch-check { display:inline-flex; align-items:center; gap:6px; min-height:32px; padding:5px 9px; border:1px solid #cbd5dc; border-radius:5px; background:#fff; color:#334155; }
+    .batch-check input { width:auto; }
+    .batch-queue { border:1px solid var(--line); border-radius:6px; overflow:hidden; }
+    .batch-status-pill { display:inline-flex; align-items:center; gap:5px; padding:2px 7px; border-radius:999px; background:#edf0f2; color:#53616d; font-size:12px; }
+    .batch-status-pill.running { background:#e8f3ff; color:#16549b; }
+    .batch-status-pill.complete { background:#e7f7ef; color:#117b72; }
+    .batch-status-pill.failed { background:#fff1f0; color:#b42318; }
+    .batch-progress { margin-top:12px; padding:12px; border:1px solid var(--line); border-radius:6px; background:#f8fafc; }
+    .batch-progress-top { display:flex; justify-content:space-between; gap:12px; align-items:center; margin-bottom:8px; color:#304152; }
+    .batch-progress-track { height:10px; overflow:hidden; border-radius:999px; background:#e5ebf0; }
+    .batch-progress-bar { width:0%; height:100%; border-radius:inherit; background:#2563eb; transition:width .25s ease; }
+    .batch-progress-detail { margin-top:7px; color:var(--muted); font-size:12px; }
+    .debug-scan-controls { display:flex; align-items:end; gap:8px; padding:10px; border:1px solid var(--line); border-radius:6px; background:#fff; }
+    .debug-scan-controls label { width:110px; }
+    .debug-panel { border:1px solid var(--line); border-radius:6px; background:#fff; padding:12px; margin:12px 0; display:grid; gap:10px; }
+    .debug-summary { display:flex; flex-wrap:wrap; gap:8px; color:#334155; }
+    .debug-chip { padding:3px 8px; border-radius:999px; background:#eef3f7; font-size:12px; }
+    .debug-action-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:8px; }
+    .debug-action-card { border:1px solid #d9e1e7; border-radius:6px; padding:8px; display:grid; gap:6px; background:#fafcfd; }
+    .debug-action-card img { width:100%; aspect-ratio:9/16; object-fit:cover; border:1px solid var(--line); border-radius:4px; background:#edf2f6; }
+    .debug-action-meta { font-size:12px; color:#475569; line-height:1.5; }
+    @media(max-width:1040px){ .batch-layout { grid-template-columns:1fr; } }
+  </style>
+  <link rel="stylesheet" href="annotation-studio.css?v=20260721-21">
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand-lockup"><div class="brand-mark" aria-hidden="true"><i data-lucide="blocks"></i></div><div><h1>爆款素材变体生成器</h1><div class="sub"><span class="local-dot"></span>本地工作区 · 数据不离开当前电脑</div></div></div>
+    <nav class="header-actions" aria-label="全局工具">
+      <button class="primary command-button" id="videoRebuildBtn"><i data-lucide="scan-video"></i><span>视频动作标注</span></button>
+      <button class="command-button" id="truthProgressBtn"><i data-lucide="database-check"></i><span>真值 <strong id="truthProgressCount">--/60</strong></span></button>
+      <button class="command-button" id="calibrateBtn"><i data-lucide="scan-line"></i><span>预览校准</span></button>
+      <button class="command-button" id="editorSettingsBtn"><i data-lucide="plug-zap"></i><span>编辑器接口</span></button>
+      <span class="header-divider" aria-hidden="true" hidden></span>
+      <button class="icon-button" id="exportBtn" aria-label="导出备份" title="导出备份" hidden><i data-lucide="download"></i></button>
+      <button class="icon-button" id="importBtn" aria-label="导入备份" title="导入备份" hidden><i data-lucide="upload"></i></button>
+      <button class="icon-button danger" id="clearBtn" aria-label="清空本地数据" title="清空本地数据" hidden><i data-lucide="trash-2"></i></button>
+    </nav>
+  </header>
+  <main class="app-main" id="appMain">
+    <div class="grid">
+      <section class="panel legacy-material-panel" hidden>
+        <div class="panel-head"><div><h2>爆款素材库</h2><div class="sub">素材名称全局唯一；保存后可自动刷新对应变体</div></div><button class="primary" id="newBtn">新增素材</button></div>
+        <div class="body">
+          <form id="materialForm">
+            <input type="hidden" id="id">
+            <label class="wide">素材名称 <input id="name" required placeholder="例如：0701_彩块02"></label>
+            <label>渠道 <input id="channel" placeholder="例如：google"></label>
+            <label>负责人 <input id="owner" placeholder="姓名"></label>
+            <label>时长 <select id="duration"><option>60s以内</option><option>60s以上</option></select></label>
+            <label>尺寸 <select id="size"><option>竖版</option><option>方版</option><option>横版</option></select></label>
+            <label>玩法类型 <select id="gameplay"><option>俄罗斯方块玩法</option><option>游戏玩法</option></select></label>
+            <label>方块类型 <select id="blockType"><option>经典块</option><option>特殊块</option></select></label>
+            <label>特殊材质 <input id="specialMaterial" list="materialPool" placeholder="经典块请填 无"></label>
+            <label>方块颜色 <select id="color"><option>彩色</option><option>纯色</option><option>变色</option></select></label>
+            <label>立体度 <select id="dimension"><option>2D</option><option>3D</option></select></label>
+            <label>钩子 <select id="hook"><option>无钩子</option><option>有钩子</option><option>强钩子</option></select></label>
+            <label>最大改动数 <select id="maxChanges"><option value="1">1</option><option value="2">2</option><option value="3" selected>3</option><option value="4">4</option></select></label>
+            <label class="wide">钩子简介 <textarea id="hookIntro" placeholder="有钩子或强钩子时必须填写"></textarea></label>
+            <label class="wide">附加特征 <input id="extras" list="extraPool" placeholder="逗号分隔，例如：前3s大面积消除, 连消"></label>
+            <label class="wide">核心保留特征 <input id="core" list="corePool" placeholder="逗号分隔，例如：彩色, 前3s大面积消除"></label>
+            <label class="wide split"><input type="checkbox" id="autoRefresh" checked style="width:auto"> 保存后自动刷新该素材的变体</label>
+            <div class="toolrow" style="grid-column:1/-1"><button class="primary" type="submit">保存素材</button><button type="button" id="generateBtn">仅生成/刷新变体</button><button type="button" id="resetBtn">取消编辑</button></div>
+          </form>
+          <datalist id="materialPool"></datalist><datalist id="extraPool"></datalist><datalist id="corePool"></datalist>
+          <div class="note">动态字段（特殊材质、附加特征、核心保留特征）只从当前素材库的实际值中取。素材为“有钩子/强钩子”时不会自动生成变体。</div>
+          <div class="status" id="formStatus"></div>
+        </div>
+      </section>
+      <section class="panel legacy-material-panel" hidden>
+        <div class="panel-head"><div><h2>素材变体库</h2><div class="sub" id="counts"></div></div><button id="demoBtn">填入示例</button></div>
+        <div class="body">
+          <div class="toolbar"><div class="filters"><input id="search" placeholder="搜索来源素材或变体名称"><select id="versionFilter"><option value="current">仅当前版本</option><option value="all">全部版本</option></select></div><div class="toolrow"><button id="refreshAllBtn">刷新全部可生成素材</button><button id="exportCsvBtn">导出当前变体 CSV</button></div></div>
+          <div class="scroll" id="variants"></div>
+          <div style="height:14px"></div>
+          <h2 style="margin-bottom:8px">素材库记录</h2><div class="scroll" style="max-height:290px" id="materials"></div>
+        </div>
+      </section>
+      <section class="panel batch-panel">
+        <div class="panel-head">
+          <div><h2>批量变体视频</h2><div class="sub">上传样本，选择方块/背景/尺寸比例，按组合顺序生成 60fps 变体视频</div></div>
+          <button class="primary command-button" id="batchAnalyzeBtn"><i data-lucide="scan-search"></i><span>识别样本</span></button>
+        </div>
+        <div class="body">
+          <div class="batch-layout">
+            <div class="batch-card">
+              <h3>样本与动作脚本</h3>
+              <label>样本视频 <input id="batchSampleVideo" type="file" accept="video/*"></label>
+              <div class="toolrow">
+                <button type="button" id="batchOpenReviewBtn" disabled>打开动作校对</button>
+                <button type="button" id="batchUseCurrentJobBtn">使用当前已确认任务</button>
+              </div>
+              <div class="status" id="batchAnalyzeStatus">请选择一个样本视频并识别。这里会直接使用算法识别结果生成变体；需要精修动作时再进入视频动作标注。</div>
+            </div>
+            <div class="batch-card">
+              <h3>变体组合</h3>
+              <div class="batch-grid">
+                <label>背景素材 <select id="batchBackgrounds" multiple size="4">
+                  <option value="ui_background_bg_new_a" selected>赛场深色背景</option>
+                  <option value="ui_background_1217bg">1217 背景</option>
+                  <option value="ui_background_background_1">Background 1</option>
+                  <option value="ui_background_image">紫色韵味</option>
+                </select></label>
+                <label>方块素材 <select id="batchBlockStyles" multiple size="4">
+                  <option value="normal" selected>经典彩色块</option>
+                  <option value="jewel">宝石块</option>
+                </select></label>
+                <label>自定义背景文件 <input id="batchBackgroundFiles" type="file" accept="image/*" multiple></label>
+                <label>自定义方块文件 <input id="batchBlockFiles" type="file" accept="image/*" multiple></label>
+                <label class="wide">输出目录 <input id="batchOutput" value="G:\\爆款素材变体生成器\\变体视频"></label>
+              </div>
+              <div>
+                <div class="hint" style="margin-bottom:6px">输出尺寸</div>
+                <div class="batch-checks">
+                  <label class="batch-check"><input type="checkbox" name="batchAspect" value="9:16" checked>9:16 竖版</label>
+                  <label class="batch-check"><input type="checkbox" name="batchAspect" value="1:1">1:1 方版</label>
+                  <label class="batch-check"><input type="checkbox" name="batchAspect" value="16:9">16:9 横版</label>
+                </div>
+              </div>
+              <div class="toolrow">
+                <button type="button" id="batchBuildQueueBtn">生成任务队列</button>
+                <button type="button" class="primary" id="batchGenerateBtn" disabled>批量生成变体视频</button>
+              </div>
+              <div class="batch-progress" id="batchProgress" hidden>
+                <div class="batch-progress-top"><strong id="batchProgressTitle">Batch generation</strong><span id="batchProgressCount">0/0</span></div>
+                <div class="batch-progress-track" aria-hidden="true"><div class="batch-progress-bar" id="batchProgressBar"></div></div>
+                <div class="batch-progress-detail" id="batchProgressDetail">Waiting</div>
+              </div>
+              <div class="hint">自定义图片文件会先记录到队列配置；当前生成仍使用已接入客户端的素材 ID，后续可继续接资源导入接口。</div>
+            </div>
+          </div>
+          <div style="height:14px"></div>
+          <div class="batch-queue">
+            <table><thead><tr><th>序号</th><th>背景</th><th>方块</th><th>尺寸</th><th>状态</th><th>输出</th></tr></thead><tbody id="batchQueueRows"></tbody></table>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+  <input type="file" id="importFile" accept="application/json" hidden>
+  <dialog id="editorDialog">
+    <div class="panel-head"><div><h2>游戏玩法视频接口</h2><div class="sub">连接 F:\Release-Editor\Release-Editor</div></div><button id="closeEditorDialog">关闭</button></div>
+    <div class="dialog-body">
+      <label class="wide">基准关卡 JSON 路径 <input id="templatePath" placeholder="例如：G:\\我的关卡\\基准玩法.json"></label>
+      <div class="hint">首次在 BlockPuzzleEditor 中做一个可运行的基准关卡并保存为 JSON。之后每条“游戏玩法”变体都继承这个棋盘、方块组和资源，只更新任务名称、自动放置、录屏与输出目录。</div>
+      <div style="height:12px"></div>
+      <label class="wide">变体视频输出目录 <input id="videoOutputPath" placeholder="默认：G:\\爆款素材变体生成器\\变体视频"></label>
+      <div class="toolrow" style="margin-top:14px"><button class="primary" id="saveEditorSettings">保存接口设置</button><button id="checkEditorBtn">检查编辑器连接</button></div>
+      <div class="status" id="editorStatus"></div>
+    </div>
+  </dialog>
+  <main class="annotation-page" id="videoDialog" aria-labelledby="videoDialogTitle" hidden>
+      <div class="annotation-dialog">
+    <div class="annotation-dialog-head"><div class="annotation-title"><div class="annotation-kicker">VIDEO TRUTH STUDIO</div><h2 id="videoDialogTitle">视频动作标注</h2><div class="sub">把每次出块、落点和消除整理成可回放的动作真值</div></div><button type="button" class="icon-button" id="closeVideoDialog" aria-label="关闭视频动作标注" title="关闭"><i data-lucide="x"></i></button></div>
+    <div class="dialog-body annotation-dialog-body">
+      <section class="annotation-import" id="annotationImport">
+        <label class="file-drop" for="sourceVideo"><span class="file-drop-icon"><i data-lucide="file-video-2"></i></span><span><strong id="sourceVideoName">选择需要标注的视频</strong><small>支持 MP4 等本地视频，分析和标注均在当前电脑完成</small></span><span class="file-drop-action">选择文件</span><input type="file" id="sourceVideo" accept="video/*"></label>
+        <button class="primary command-button" id="analyzeVideoBtn" onclick="runVideoAnnotationAnalyze?.()"><i data-lucide="scan-search"></i><span>识别棋盘与动作</span></button>
+        <div class="debug-scan-controls" aria-label="调试识别">
+          <label>调试 fps <input id="debugSampleFps" type="number" min="1" max="60" step="1" value="12"></label>
+          <button type="button" class="command-button" id="debugAnalyzeBtn"><i data-lucide="bug"></i><span>调试识别</span></button>
+        </div>
+      </section>
+      <section class="annotation-task-summary" id="annotationTaskSummary" hidden></section>
+      <div class="annotation-status" id="videoStatus" role="status" aria-live="polite"></div>
+      <div class="annotation-loading" id="annotationLoading" role="status" aria-live="polite" hidden>
+        <span class="annotation-loading-icon"><i data-lucide="loader-circle"></i></span>
+        <span class="annotation-loading-copy"><strong id="annotationAnalyzeTitle">正在识别棋盘与动作</strong><small id="annotationAnalyzeDetail">准备上传样本视频...</small><span class="annotation-analyze-progress"><span id="annotationAnalyzeProgressBar"></span></span></span>
+      </div>
+      <div class="action-save-feedback" id="actionSaveFeedback" role="status" aria-live="assertive" hidden>
+        <span class="action-save-feedback-icon"><i data-lucide="loader-circle"></i></span>
+        <span class="action-save-feedback-copy"><strong id="actionSaveFeedbackTitle"></strong><small id="actionSaveFeedbackDetail"></small></span>
+        <button type="button" class="icon-button" id="dismissActionSaveFeedback" aria-label="关闭保存结果" title="关闭"><i data-lucide="x"></i></button>
+      </div>
+      <div id="analysisResult"></div>
+      <div id="rebuildOptions" hidden>
+        <div style="height:12px"></div>
+        <form>
+          <label>变体背景 <select id="rebuildBackground"><option value="ui_background_bg_new_a">赛场深色背景</option><option value="ui_background_1217bg">1217 背景</option><option value="ui_background_background_1">Background 1</option><option value="ui_background_image">紫色韵味</option></select></label>
+          <label>方块风格 <select id="rebuildBlockStyle"><option value="normal">经典彩色块</option><option value="jewel">宝石块</option></select></label>
+          <label class="wide">视频名称 <input id="rebuildName" placeholder="默认使用原视频名称"></label>
+          <label class="wide">视频输出目录 <input id="rebuildOutput" value="G:\\爆款素材变体生成器\\变体视频"></label>
+        </form>
+        <div class="note">完整回放由改造版客户端内部执行：固定每轮出块、落点、顺序和消除检测，不依赖鼠标坐标或窗口位置。</div>
+        <div class="toolrow" style="margin-top:14px"><button id="recordRebuildBtn">仅生成初始棋盘测试</button><button class="primary" id="fullReplayBtn">生成确定性完整变体视频</button></div>
+      </div>
+    </div>
+      </div>
+  </main>
+  <div class="modal fade truth-progress-modal" id="truthProgressDialog" tabindex="-1" aria-labelledby="truthProgressTitle" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div><div class="annotation-kicker">DATASET TRUTH</div><h2 class="modal-title" id="truthProgressTitle">视频真值进度</h2></div>
+          <button type="button" class="icon-button" data-bs-dismiss="modal" aria-label="关闭真值进度" title="关闭"><i data-lucide="x"></i></button>
+        </div>
+        <div class="modal-body">
+          <div class="truth-summary" id="truthProgressSummary"></div>
+          <div class="truth-toolbar" role="group" aria-label="筛选真值状态">
+            <button type="button" class="truth-filter active" data-truth-filter="all">全部</button>
+            <button type="button" class="truth-filter" data-truth-filter="confirmed">已完成</button>
+            <button type="button" class="truth-filter" data-truth-filter="pending">待标注</button>
+          </div>
+          <div class="truth-table-wrap"><table class="truth-table"><thead><tr><th>编号</th><th>数据集</th><th>视频</th><th>状态</th><th>步骤</th><th>确认时间</th></tr></thead><tbody id="truthProgressRows"></tbody></table></div>
+          <div class="truth-empty" id="truthProgressEmpty" hidden>当前筛选下没有视频。</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <dialog id="calibrationDialog">
+    <div class="panel-head"><div><h2>预览窗口校准</h2><div class="sub">依次点击截图中的棋盘左上角与右下角</div></div><button id="closeCalibrationDialog">关闭</button></div>
+    <div class="dialog-body">
+      <div class="toolrow"><button class="primary" id="startCalibrationBtn">启动校准预览</button><button id="captureCalibrationBtn">截取当前屏幕</button><button id="saveCalibrationBtn" disabled>保存棋盘坐标</button></div>
+      <div class="status" id="calibrationStatus"></div>
+      <div id="calibrationHint" class="hint"></div>
+      <div style="margin-top:10px;overflow:auto;max-height:55vh"><img id="calibrationImage" alt="校准截图" style="display:none;max-width:100%;cursor:crosshair;border:1px solid #dce3e8"></div>
+    </div>
+  </dialog>
+  <script src="vendor/lucide.min.js"></script>
+  <script src="vendor/bootstrap/bootstrap.bundle.min.js"></script>
+  <script>
+  function enhanceBootstrap(root=document){
+    root.querySelectorAll('form input:not([type="hidden"]):not([type="checkbox"]):not([type="file"]), .control-column input, .version-bar select, .source-calibration input').forEach(el=>el.classList.add('form-control'));
+    root.querySelectorAll('form select, .control-column select, .version-bar select').forEach(el=>el.classList.add('form-select'));
+    root.querySelectorAll('form textarea, .control-column textarea').forEach(el=>el.classList.add('form-control'));
+    root.querySelectorAll('button.primary').forEach(el=>el.classList.add('btn','btn-primary'));
+    root.querySelectorAll('.header-actions button:not(.primary):not(.danger), .panel-head>button:not(.primary), .toolrow button:not(.primary), .version-bar button, .source-calibration button, .workbench-actions button:not(.primary):not(.danger), .annotation-footer-actions button:not(.primary)').forEach(el=>el.classList.add('btn','btn-outline-secondary'));
+    root.querySelectorAll('button.danger').forEach(el=>el.classList.add('btn','btn-outline-danger'));
+  }
+  function refreshIcons(){enhanceBootstrap();window.lucide?.createIcons({attrs:{class:'ui-icon','aria-hidden':'true'}});}
+  const KEY='hit-material-variant-local-v1';
+  const state=JSON.parse(localStorage.getItem(KEY)||'{"materials":[],"variants":[]}');
+  const $=id=>document.getElementById(id); const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  let batchJob=null,batchQueue=[];
+  const selectedOptions=id=>Array.from($(id).selectedOptions).map(option=>({value:option.value,label:option.textContent.trim()}));
+  const checkedValues=name=>Array.from(document.querySelectorAll(`input[name="${name}"]:checked`)).map(input=>input.value);
+  function setBatchStatus(message,kind=''){
+    const el=$('batchAnalyzeStatus'); if(!el)return;
+    el.textContent=message; el.style.color=kind==='error'?'#b42318':kind==='success'?'#117b72':'';
+  }
+  function renderBatchQueue(){
+    const rows=$('batchQueueRows'); if(!rows)return;
+    rows.innerHTML=batchQueue.length?batchQueue.map((item,index)=>`<tr><td>${index+1}</td><td>${esc(item.backgroundLabel)}</td><td>${esc(item.blockLabel)}</td><td>${esc(item.aspectRatio)}</td><td><span class="batch-status-pill ${esc(item.status)}">${esc(item.statusText)}</span></td><td>${item.outputVideo?esc(item.outputVideo):'<span class="hint">待生成</span>'}</td></tr>`).join(''):'<tr><td colspan="6"><div class="empty">还没有任务。选择素材和尺寸后点击“生成任务队列”。</div></td></tr>';
+    refreshIcons();
+  }
+  function updateBatchProgress(done,total,detail='',activeIndex=-1){
+    const panel=$('batchProgress'); if(!panel)return;
+    const pct=total?Math.round((done/total)*100):0;
+    panel.hidden=false;
+    $('batchProgressTitle').textContent=activeIndex>=0?`Batch generation · job ${activeIndex+1}`:'Batch generation';
+    $('batchProgressCount').textContent=`${done}/${total} (${pct}%)`;
+    $('batchProgressBar').style.width=`${pct}%`;
+    $('batchProgressDetail').textContent=detail||'Waiting';
+  }
+  function resetBatchProgress(){
+    const panel=$('batchProgress'); if(!panel)return;
+    panel.hidden=true;
+    $('batchProgressCount').textContent='0/0';
+    $('batchProgressBar').style.width='0%';
+    $('batchProgressDetail').textContent='Waiting';
+  }
+  async function uploadBatchAssets(assetKind,inputId){
+    const files=Array.from($(inputId).files||[]);
+    if(!files.length)return [];
+    const form=new FormData();
+    form.append('assetKind',assetKind);
+    files.forEach(file=>form.append('files',file));
+    const response=await fetch('http://127.0.0.1:8765/api/assets/upload',{method:'POST',body:form});
+    const data=await response.json();
+    if(!response.ok||!data.ok)throw new Error(data.error||'asset upload failed');
+    return data.assets||[];
+  }
+  function batchCurrentJobReady(){
+    return Boolean(batchJob&&batchJob.jobId);
+  }
+  function useCurrentJobForBatch(){
+    if(!rebuildJob||!rebuildJob.jobId)return false;
+    batchJob=rebuildJob;
+    $('batchOpenReviewBtn').disabled=false;
+    $('batchGenerateBtn').disabled=!batchQueue.length;
+    return true;
+  }
+  async function ensureBatchJobReady(){
+    if(batchCurrentJobReady())return 'existing';
+    if(useCurrentJobForBatch())return 'current';
+    await analyzeBatchSample();
+    return 'analyzed';
+  }
+  async function analyzeBatchSample(){
+    const file=$('batchSampleVideo').files[0];
+    if(!file)throw new Error('请先选择一个样本视频');
+    setBatchStatus('正在识别样本视频，请稍候...');
+    $('batchAnalyzeBtn').disabled=true;
+    try{
+      const form=new FormData(); form.append('video',file);
+      const response=await fetch('http://127.0.0.1:8765/api/video/analyze',{method:'POST',body:form});
+      const data=await response.json();
+      if(!response.ok||!data.ok)throw new Error(data.error||'样本识别失败');
+      batchJob=data; rebuildJob=data; actionsConfirmed=false;
+      const analysis=data.analysis||{};
+      actionDrafts=structuredClone(analysis.reviewActions||[]);
+      referenceInteractionDrafts=structuredClone(analysis.timeline?.referenceInteractions||[]);
+      $('rebuildName').value=file.name.replace(/\.[^.]+$/,'')+' · 批量变体';
+      $('rebuildOptions').hidden=true; $('fullReplayBtn').disabled=true;
+      $('batchOpenReviewBtn').disabled=false;
+      return data;
+    }finally{
+      $('batchAnalyzeBtn').disabled=false;
+    }
+  }
+  async function waitBatchStatus(jobId,row){
+    for(let i=0;i<100;i++){
+      await new Promise(resolve=>setTimeout(resolve,2000));
+      try{
+        const response=await fetch(`http://127.0.0.1:8765/api/video/status?jobId=${encodeURIComponent(jobId)}`);
+        const data=await response.json();
+        if(data.status==='complete'){row.status='complete';row.statusText='已完成';row.outputVideo=data.outputVideo||row.outputVideo;renderBatchQueue();return;}
+        if(data.status==='failed')throw new Error(data.message||'生成失败');
+        row.status='running';row.statusText=data.message||'生成中';renderBatchQueue();
+      }catch(error){
+        row.status='failed';row.statusText=error.message;renderBatchQueue();throw error;
+      }
+    }
+    throw new Error('等待生成完成超时');
+  }
+  waitBatchStatus=async(jobId,row,doneBefore=0,total=1,activeIndex=0)=>{
+    for(let i=0;i<100;i++){
+      await new Promise(resolve=>setTimeout(resolve,2000));
+      try{
+        const response=await fetch(`http://127.0.0.1:8765/api/video/status?jobId=${encodeURIComponent(jobId)}`);
+        const data=await response.json();
+        if(data.status==='complete'){
+          row.status='complete'; row.statusText='complete'; row.outputVideo=data.outputVideo||row.outputVideo;
+          renderBatchQueue(); updateBatchProgress(doneBefore+1,total,`Completed job ${activeIndex+1}/${total}`,activeIndex);
+          return;
+        }
+        if(data.status==='failed')throw new Error(data.message||'generation failed');
+        row.status='running'; row.statusText=data.message||'generating';
+        renderBatchQueue(); updateBatchProgress(doneBefore,total,`Running job ${activeIndex+1}/${total}: ${row.statusText}`,activeIndex);
+      }catch(error){
+        row.status='failed'; row.statusText=error.message;
+        renderBatchQueue(); updateBatchProgress(doneBefore,total,`Failed job ${activeIndex+1}/${total}: ${error.message}`,activeIndex);
+        throw error;
+      }
+    }
+    throw new Error('generation timed out');
+  };
+  function openVideoAnnotationPage(){
+    $('appMain').hidden=true;
+    $('videoDialog').hidden=false;
+    document.body.classList.add('annotation-page-open');
+    if(location.hash!=='#video-annotation') history.pushState(null,'','#video-annotation');
+    window.scrollTo({top:0,behavior:'instant'});
+    refreshIcons();
+  }
+  function closeVideoAnnotationPage(){
+    $('videoDialog').hidden=true;
+    $('appMain').hidden=false;
+    document.body.classList.remove('annotation-page-open');
+    if(location.hash==='#video-annotation') history.pushState(null,'',location.pathname+location.search);
+    refreshIcons();
+  }
+  $('videoDialog').showModal=openVideoAnnotationPage;
+  $('videoDialog').close=closeVideoAnnotationPage;
+  window.addEventListener('popstate',()=>location.hash==='#video-annotation'?openVideoAnnotationPage():closeVideoAnnotationPage());
+  if(location.hash==='#video-annotation') openVideoAnnotationPage();
+  const truthProgressModal=bootstrap.Modal.getOrCreateInstance($('truthProgressDialog'));
+  let truthProgressData=null,truthProgressFilter='all';
+  function renderTruthProgress(){
+    if(!truthProgressData)return;
+    const {summary,splits,items}=truthProgressData;
+    $('truthProgressCount').textContent=`${summary.completed}/${summary.total}`;
+    $('truthProgressSummary').innerHTML=`<div class="truth-total"><strong>${summary.completed}</strong><span>/ ${summary.total} 已完成</span></div>${splits.map(split=>`<div class="truth-split"><span>${esc(split.label)}</span><strong>${split.completed}/${split.total}</strong></div>`).join('')}`;
+    const visible=items.filter(item=>truthProgressFilter==='all'||item.status===truthProgressFilter);
+    $('truthProgressRows').innerHTML=visible.map(item=>`<tr><td><strong>${esc(item.datasetId)}</strong></td><td>${esc(item.splitLabel)}</td><td class="truth-filename" title="${esc(item.filename)}">${esc(item.filename)}</td><td><span class="truth-status ${item.status}">${item.status==='confirmed'?'<i data-lucide="circle-check"></i> 已完成':'<i data-lucide="circle-dashed"></i> 待标注'}</span></td><td>${item.stepCount||'--'}</td><td>${item.confirmedAt?esc(item.confirmedAt.replace('T',' ')):'--'}</td></tr>`).join('');
+    $('truthProgressEmpty').hidden=visible.length>0;
+    refreshIcons();
+  }
+  async function loadTruthProgress(showError=false){try{const r=await fetch('/api/video/truth-progress');const d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||`HTTP ${r.status}`);truthProgressData=d;renderTruthProgress();}catch(e){if(showError){$('truthProgressSummary').innerHTML=`<div class="truth-load-error">读取失败：${esc(e.message)}</div>`;$('truthProgressRows').innerHTML='';$('truthProgressEmpty').hidden=true;}}}
+  $('truthProgressBtn').onclick=async()=>{truthProgressModal.show();await loadTruthProgress(true);};
+  document.querySelectorAll('[data-truth-filter]').forEach(button=>button.onclick=()=>{truthProgressFilter=button.dataset.truthFilter;document.querySelectorAll('[data-truth-filter]').forEach(item=>item.classList.toggle('active',item===button));renderTruthProgress();});
+  const list=v=>String(v||'').split(/[,，\n]/).map(x=>x.trim()).filter(Boolean); const join=v=>(v||[]).join(', ');
+  const uid=()=>crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2);
+  const save=()=>localStorage.setItem(KEY,JSON.stringify(state));
+  let rebuildJob=null, actionDrafts=[], referenceInteractionDrafts=[], referenceCandidateDrafts=[], actionsConfirmed=false, sourceCalibrationPoints=[];
+  $('batchAnalyzeBtn').onclick=async()=>{
+    const file=$('batchSampleVideo').files[0];
+    if(!file){setBatchStatus('请先选择一个样本视频。','error');return;}
+    setBatchStatus('正在识别样本视频，请稍候…');
+    $('batchAnalyzeBtn').disabled=true;
+    try{
+      const form=new FormData(); form.append('video',file);
+      const response=await fetch('http://127.0.0.1:8765/api/video/analyze',{method:'POST',body:form});
+      const data=await response.json();
+      if(!data.ok)throw new Error(data.error||'识别失败');
+      batchJob=data; rebuildJob=data; actionsConfirmed=false;
+      const analysis=data.analysis||{};
+      actionDrafts=structuredClone(analysis.reviewActions||[]);
+      referenceInteractionDrafts=structuredClone(analysis.timeline?.referenceInteractions||[]);
+      $('rebuildName').value=file.name.replace(/\.[^.]+$/,'')+' · 批量变体';
+      $('rebuildOptions').hidden=true; $('fullReplayBtn').disabled=true;
+      $('batchOpenReviewBtn').disabled=false; $('batchGenerateBtn').disabled=!batchQueue.length;
+      setBatchStatus(`${data.cached?'已复用样本识别缓存：':'识别完成：'}${actionDrafts.length} 个动作。可以直接生成队列；如需精修再打开动作校对。`,'success');
+    }catch(error){setBatchStatus(`样本识别失败：${error.message}`,'error');}
+    finally{$('batchAnalyzeBtn').disabled=false;}
+  };
+  $('batchOpenReviewBtn').onclick=()=>{
+    if(!batchJob)return;
+    rebuildJob=batchJob;
+    const analysis=batchJob.analysis||{};
+    actionDrafts=structuredClone(analysis.reviewActions||[]);
+    referenceInteractionDrafts=structuredClone(analysis.timeline?.referenceInteractions||[]);
+    setAnnotationStage('workbench'); renderActionReview(); $('videoDialog').showModal();
+  };
+  $('batchUseCurrentJobBtn').onclick=()=>{
+    if(!rebuildJob||!rebuildJob.jobId){setBatchStatus('当前没有可用的视频任务，请先上传并识别样本。','error');return;}
+    batchJob=rebuildJob; $('batchOpenReviewBtn').disabled=false; $('batchGenerateBtn').disabled=!batchCurrentJobReady();
+    setBatchStatus(batchCurrentJobReady()?'已使用当前任务，可以生成队列。':'当前没有可用任务，请先上传并识别样本。',batchCurrentJobReady()?'success':'');
+  };
+  $('batchBuildQueueBtn').onclick=()=>{
+    const backgrounds=selectedOptions('batchBackgrounds'),blocks=selectedOptions('batchBlockStyles'),aspects=checkedValues('batchAspect');
+    if(!backgrounds.length||!blocks.length||!aspects.length){setBatchStatus('请至少选择一个背景、一个方块素材和一个输出尺寸。','error');return;}
+    const customBackgrounds=Array.from($('batchBackgroundFiles').files||[]).map(file=>file.name);
+    const customBlocks=Array.from($('batchBlockFiles').files||[]).map(file=>file.name);
+    batchQueue=[];
+    for(const background of backgrounds)for(const block of blocks)for(const aspectRatio of aspects){
+      batchQueue.push({backgroundId:background.value,backgroundLabel:background.label,blockStyle:block.value,blockLabel:block.label,aspectRatio,customBackgrounds,customBlocks,status:'idle',statusText:'待生成',outputVideo:''});
+    }
+    $('batchGenerateBtn').disabled=!batchQueue.length||!batchCurrentJobReady();
+    renderBatchQueue();
+    setBatchStatus(`已生成 ${batchQueue.length} 个变体任务${batchCurrentJobReady()?'，可以开始批量生成。':'。请先上传并识别样本视频。'}`,batchCurrentJobReady()?'success':'');
+  };
+  $('batchGenerateBtn').onclick=async()=>{
+    if(!batchCurrentJobReady()){setBatchStatus('请先上传并识别样本视频。','error');return;}
+    if(!batchQueue.length){setBatchStatus('请先生成任务队列。','error');return;}
+    $('batchGenerateBtn').disabled=true;
+    const baseName=($('rebuildName').value.trim()||batchJob.jobId||'批量变体').replace(/\s+/g,'_');
+    for(let index=0;index<batchQueue.length;index++){
+      const row=batchQueue[index]; row.status='running'; row.statusText='启动中'; renderBatchQueue();
+      try{
+        const name=`${baseName}_${index+1}_${row.aspectRatio}_${row.blockLabel}_${row.backgroundLabel}`;
+        const response=await fetch('http://127.0.0.1:8765/api/video/replay',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jobId:batchJob.jobId,name,outputDirectory:$('batchOutput').value.trim(),backgroundId:row.backgroundId,blockStyle:row.blockStyle,aspectRatio:row.aspectRatio})});
+        const data=await response.json(); if(!data.ok)throw new Error(data.error||'启动失败');
+        row.outputVideo=data.outputVideo||''; row.statusText='生成中'; renderBatchQueue();
+        await waitBatchStatus(batchJob.jobId,row);
+      }catch(error){
+        row.status='failed'; row.statusText=error.message; renderBatchQueue(); setBatchStatus(`第 ${index+1} 个任务失败：${error.message}`,'error'); $('batchGenerateBtn').disabled=false; return;
+      }
+    }
+    setBatchStatus(`批量生成完成：${batchQueue.length} 个变体视频。`,'success'); $('batchGenerateBtn').disabled=false;
+  };
+
+  $('batchBuildQueueBtn').onclick=async()=>{
+    const aspects=checkedValues('batchAspect');
+    const builtinBackgrounds=selectedOptions('batchBackgrounds');
+    const builtinBlocks=selectedOptions('batchBlockStyles').map(block=>({blockStyle:block.value,blockResourceId:'',blockLabel:block.label}));
+    if(!aspects.length){setBatchStatus('Please select at least one output size.','error');return;}
+    $('batchBuildQueueBtn').disabled=true;
+    try{
+      setBatchStatus('Uploading custom images to Unity SharedImageLibrary...');
+      const [customBackgroundAssets,customBlockAssets]=await Promise.all([
+        uploadBatchAssets('background','batchBackgroundFiles'),
+        uploadBatchAssets('block','batchBlockFiles'),
+      ]);
+      const customBackgrounds=customBackgroundAssets.map(asset=>({backgroundId:asset.id,backgroundLabel:asset.name||asset.id}));
+      const customBlocks=customBlockAssets.map(asset=>({blockStyle:'custom',blockResourceId:asset.id,blockLabel:asset.name||asset.id}));
+      const backgrounds=customBackgrounds.length?customBackgrounds:builtinBackgrounds.map(background=>({backgroundId:background.value,backgroundLabel:background.label}));
+      const blocks=customBlocks.length?customBlocks:builtinBlocks;
+      if(!backgrounds.length||!blocks.length){setBatchStatus('Please select or upload at least one background and one block asset.','error');return;}
+      batchQueue=[];
+      for(const background of backgrounds)for(const block of blocks)for(const aspectRatio of aspects){
+        batchQueue.push({...background,...block,aspectRatio,status:'idle',statusText:'pending',outputVideo:''});
+      }
+      $('batchGenerateBtn').disabled=!batchQueue.length;
+      renderBatchQueue();
+      const assetMode=`Using ${customBackgrounds.length?'uploaded':'selected'} background and ${customBlocks.length?'uploaded':'selected'} block assets.`;
+      setBatchStatus(`Queue ready: ${batchQueue.length} variant jobs. ${assetMode} Click batch generate; the sample will be analyzed automatically if needed.`,batchCurrentJobReady()?'success':'');
+    }catch(error){
+      setBatchStatus(`Asset upload failed: ${error.message}`,'error');
+    }finally{
+      $('batchBuildQueueBtn').disabled=false;
+    }
+  };
+  $('batchAnalyzeBtn').onclick=async()=>{
+    try{
+      const data=await analyzeBatchSample();
+      $('batchGenerateBtn').disabled=!batchQueue.length;
+      setBatchStatus(`${data.cached?'已复用样本识别缓存：':'识别完成：'}${actionDrafts.length} 个动作。可以直接批量生成；如需精修再打开动作校对。`,'success');
+    }catch(error){
+      setBatchStatus(`样本识别失败：${error.message}`,'error');
+    }
+  };
+  $('batchGenerateBtn').onclick=async()=>{
+    if(!batchQueue.length){setBatchStatus('Please build the variant queue first.','error');return;}
+    $('batchGenerateBtn').disabled=true;
+    updateBatchProgress(0,batchQueue.length,batchCurrentJobReady()?'Using prepared sample analysis...':'Preparing sample analysis...');
+    try{
+      const readySource=await ensureBatchJobReady();
+      if(readySource==='current')updateBatchProgress(0,batchQueue.length,'Using current video task...');
+      if(readySource==='existing')updateBatchProgress(0,batchQueue.length,'Using prepared sample analysis...');
+    }catch(error){
+      setBatchStatus(`样本识别失败：${error.message}`,'error');
+      updateBatchProgress(0,batchQueue.length,`Sample analysis failed: ${error.message}`);
+      $('batchGenerateBtn').disabled=false;
+      return;
+    }
+    const baseName=($('rebuildName').value.trim()||batchJob.jobId||'batch_variant').replace(/\s+/g,'_');
+    for(let index=0;index<batchQueue.length;index++){
+      const row=batchQueue[index]; row.status='running'; row.statusText='starting'; renderBatchQueue(); updateBatchProgress(index,batchQueue.length,`Starting job ${index+1}/${batchQueue.length}`,index);
+      try{
+        const name=`${baseName}_${index+1}_${row.aspectRatio}_${row.blockLabel}_${row.backgroundLabel}`;
+        const response=await fetch('http://127.0.0.1:8765/api/video/replay',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jobId:batchJob.jobId,name,outputDirectory:$('batchOutput').value.trim(),backgroundId:row.backgroundId,blockStyle:row.blockStyle,blockResourceId:row.blockResourceId||'',aspectRatio:row.aspectRatio,allowDraftReplay:true})});
+        const data=await response.json(); if(!data.ok)throw new Error(data.error||'start failed');
+        row.outputVideo=data.outputVideo||''; row.statusText='generating'; renderBatchQueue(); updateBatchProgress(index,batchQueue.length,`Generating job ${index+1}/${batchQueue.length}`,index);
+        await waitBatchStatus(batchJob.jobId,row,index,batchQueue.length,index);
+      }catch(error){
+        row.status='failed'; row.statusText=error.message; renderBatchQueue(); updateBatchProgress(index,batchQueue.length,`Job ${index+1} failed: ${error.message}`,index); setBatchStatus(`Job ${index+1} failed: ${error.message}`,'error'); $('batchGenerateBtn').disabled=false; return;
+      }
+    }
+    updateBatchProgress(batchQueue.length,batchQueue.length,`All ${batchQueue.length} jobs complete.`);
+    setBatchStatus(`Batch generation complete: ${batchQueue.length} variant videos.`,'success'); $('batchGenerateBtn').disabled=false;
+  };
+
+  let calibrationCapture=null, calibrationPoints=[];
+  const tags=(xs,kind='')=>(xs||[]).map(x=>`<span class="tag ${kind}">${esc(x)}</span>`).join('');
+  function dynamicPool(key){return [...new Set(state.materials.flatMap(m=>m[key]||[]).filter(Boolean))].sort();}
+  function updatePools(){ const fill=(id,values)=>$(id).innerHTML=values.map(v=>`<option value="${esc(v)}">`).join(''); fill('materialPool',['无',...dynamicPool('specialMaterial')]); fill('extraPool',dynamicPool('extras'));fill('corePool',dynamicPool('core')); }
+  function normalize(m){ m.extras=Array.isArray(m.extras)?m.extras:list(m.extras);m.core=Array.isArray(m.core)?m.core:list(m.core);m.specialMaterial=Array.isArray(m.specialMaterial)?m.specialMaterial:list(m.specialMaterial); if(m.blockType==='经典块')m.specialMaterial=['无'];if(m.blockType==='特殊块'&&!m.specialMaterial.some(x=>x!=='无'))m.specialMaterial=['无']; return m; }
+  function formMaterial(){ return normalize({id:$('id').value||uid(),name:$('name').value.trim(),channel:$('channel').value.trim(),owner:$('owner').value.trim(),duration:$('duration').value,size:$('size').value,gameplay:$('gameplay').value,blockType:$('blockType').value,specialMaterial:list($('specialMaterial').value),color:$('color').value,dimension:$('dimension').value,hook:$('hook').value,hookIntro:$('hookIntro').value.trim(),extras:list($('extras').value),core:list($('core').value),maxChanges:+$('maxChanges').value}); }
+  function resetForm(){ $('materialForm').reset();$('id').value='';$('maxChanges').value='3';$('autoRefresh').checked=true;$('formStatus').textContent=''; }
+  function valid(m){ if(!m.name)return '请填写素材名称。'; if(state.materials.some(x=>x.name===m.name&&x.id!==m.id))return '素材名称必须全局唯一。'; if((m.hook==='有钩子'||m.hook==='强钩子')&&!m.hookIntro)return '有钩子或强钩子时必须填写钩子简介。'; if(m.blockType==='特殊块'&&m.specialMaterial.includes('无'))return '特殊块必须填写非“无”的特殊材质。'; return ''; }
+  function edit(id){const m=state.materials.find(x=>x.id===id);if(!m)return;for(const k of ['id','name','channel','owner','duration','size','gameplay','blockType','color','dimension','hook','hookIntro','maxChanges'])$(k).value=m[k]??'';$('specialMaterial').value=join(m.specialMaterial);$('extras').value=join(m.extras);$('core').value=join(m.core);window.scrollTo({top:0,behavior:'smooth'});}
+  function isHooked(m){return m.hook==='有钩子'||m.hook==='强钩子';}
+  function tier(n){return n===1?'轻变体':n<=3?'中等变体':'重变体';}
+  function quotas(max){return max===1?[30]:max===2?[15,15]:max===3?[10,10,10]:[8,8,7,7];}
+  function candidateChanges(m){
+    const materialPool=dynamicPool('specialMaterial').filter(x=>x!=='无'); const extraPool=dynamicPool('extras'); const out=[];
+    const add=(field,label,values,apply)=>{values.filter(v=>v!==m[field]).forEach(v=>out.push({field,label,value:v,apply}));};
+    add('duration','时长',['60s以内','60s以上'],(x,v)=>x.duration=v); add('size','尺寸',['竖版','方版','横版'],(x,v)=>x.size=v); add('gameplay','玩法类型',['俄罗斯方块玩法','游戏玩法'],(x,v)=>x.gameplay=v); add('color','方块颜色',['彩色','纯色','变色'],(x,v)=>x.color=v); add('dimension','立体度',['2D','3D'],(x,v)=>x.dimension=v);
+    ['经典块','特殊块'].filter(v=>v!==m.blockType&&(v==='经典块'||materialPool.length)).forEach(v=>out.push({field:'blockIdentity',label:'方块身份',value:v==='经典块'?'经典块 + 无':`特殊块 + ${materialPool[0]}`,apply:(x)=>{x.blockType=v;x.specialMaterial=[v==='经典块'?'无':materialPool[0]];}}));
+    if(m.blockType==='特殊块') materialPool.filter(v=>!m.specialMaterial.includes(v)).forEach(v=>out.push({field:'blockIdentity',label:'特殊材质',value:v,apply:x=>x.specialMaterial=[v]}));
+    extraPool.filter(v=>!m.extras.includes(v)).forEach(v=>out.push({field:'extras',label:'附加特征',value:`加入 ${v}`,apply:x=>x.extras=[...new Set([...x.extras,v])]}));
+    m.extras.forEach(old=>extraPool.filter(v=>v!==old).forEach(v=>out.push({field:'extras',label:'附加特征',value:`${old} 改为 ${v}`,apply:x=>x.extras=x.extras.map(e=>e===old?v:e)})));
+    return out;
+  }
+  function combinations(items,n){if(n===0)return [[]];const result=[];const go=(start,chosen,fields)=>{if(chosen.length===n){result.push(chosen);return;}for(let i=start;i<items.length;i++){if(fields.has(items[i].field))continue;fields.add(items[i].field);chosen.push(items[i]);go(i+1,chosen,fields);chosen.pop();fields.delete(items[i].field);if(result.length>150) return;}};go(0,[],new Set());return result;}
+  function coreOk(src,next,changes){const changed=new Set(changes.map(x=>x.field));let kept=0; if(!changed.has('gameplay'))kept++;if(!changed.has('blockIdentity'))kept++;if(!changed.has('color'))kept++;const present=[next.gameplay,next.color,...next.specialMaterial,...next.extras];const manual=src.core.filter(x=>[src.gameplay,src.color,...src.specialMaterial,...src.extras].includes(x));if(manual.some(x=>present.includes(x)))kept++;if(changed.has('gameplay')&&(changed.has('blockIdentity')||changed.has('color')))return false;if(changed.has('blockIdentity')&&(changed.has('gameplay')||changed.has('color')))return false;return kept>=2;}
+  function generate(m){
+    state.variants.filter(v=>v.sourceId===m.id&&v.current).forEach(v=>v.current=false);
+    if(isHooked(m)){save();render();$('formStatus').textContent='当前素材含钩子，按规则未生成变体。';return;}
+    const candidates=candidateChanges(m), max=Math.min(4,+m.maxChanges||4), seen=new Set(),made=[];
+    for(let level=1;level<=max;level++){
+      const q=quotas(max)[level-1]; let count=0;
+      for(const combo of combinations(candidates,level)){
+        if(count>=q)break; const next=structuredClone(m);combo.forEach(c=>c.apply(next,c.value)); if(!coreOk(m,next,combo))continue;
+        const changes=combo.map(c=>`${c.label}：${c.value}`);const feature=[`时长:${next.duration}`,`尺寸:${next.size}`,`玩法:${next.gameplay}`,`方块:${next.blockType}/${next.specialMaterial.join('+')}`,`颜色:${next.color}`,`立体度:${next.dimension}`,`附加:${next.extras.join('+')||'无'}`];const key=`${m.id}|${feature.join('|')}`;if(seen.has(key))continue;seen.add(key);made.push({id:uid(),sourceId:m.id,sourceName:m.name,channel:m.channel,owner:m.owner,gameplay:next.gameplay,duration:next.duration,size:next.size,blockType:next.blockType,specialMaterial:next.specialMaterial,color:next.color,dimension:next.dimension,variantName:`${m.name} · ${tier(level)} · ${changes.map(x=>x.split('：')[0]).join('+')}`,retained:[!combo.some(c=>c.field==='gameplay')&&m.gameplay,!combo.some(c=>c.field==='blockIdentity')&&`${m.blockType}/${m.specialMaterial.join('+')}`,!combo.some(c=>c.field==='color')&&m.color,...m.core.filter(x=>next.extras.includes(x)||[next.gameplay,next.color,...next.specialMaterial].includes(x))].filter(Boolean),changed:changes,newFeatures:feature,extras:next.extras,tier:tier(level),hook:'无钩子',hookIntro:'',progress:'待启动',current:true,createdAt:new Date().toLocaleString()});count++;if(made.length>=30)break;
+      } if(made.length>=30)break;
+    }
+    state.variants.push(...made);save();render();$('formStatus').textContent=`已刷新变体：新增 ${made.length} 条，旧版本已标记为非当前。`;
+  }
+  function render(){updatePools();const q=$('search').value.trim().toLowerCase(),showAll=$('versionFilter').value==='all';const vars=state.variants.filter(v=>(showAll||v.current)&&(!q||[v.sourceName,v.variantName,v.changed.join(' ')].join(' ').toLowerCase().includes(q)));$('counts').textContent=`素材 ${state.materials.length} 条 · 当前变体 ${state.variants.filter(v=>v.current).length} 条`;
+    $('variants').innerHTML=vars.length?`<table><thead><tr><th>来源素材</th><th>变体名称 / 等级</th><th>保留特征</th><th>改动维度</th><th>附加特征</th><th>进度</th><th>视频任务</th><th>版本</th></tr></thead><tbody>${vars.map(v=>`<tr><td>${esc(v.sourceName)}<br><span class="hint">${esc(v.channel||'-')} · ${esc(v.owner||'-')}</span></td><td>${esc(v.variantName)}<br>${tags([v.tier],v.tier==='重变体'?'gold':'')}</td><td>${tags(v.retained)}</td><td>${tags(v.changed,'gold')}</td><td>${tags(v.extras)}</td><td><select onchange="setProgress('${v.id}',this.value)">${['待启动','进行中','已完成','已暂停'].map(x=>`<option ${x===v.progress?'selected':''}>${x}</option>`).join('')}</select></td><td>${v.gameplay==='游戏玩法'?`<button class="small primary" onclick="sendToEditor('${v.id}')">生成视频任务</button>`:'<span class="hint">仅游戏玩法</span>'}</td><td>${v.current?'<span class="tag">当前</span>':'<span class="tag gray">历史</span>'}</td></tr>`).join('')}</tbody></table>`:'<div class="empty">还没有符合规则的变体。保存一个无钩子素材后，点击“仅生成/刷新变体”。</div>';
+    $('materials').innerHTML=state.materials.length?`<table><thead><tr><th>素材名称</th><th>核心特征</th><th>附加特征</th><th>最大改动</th><th></th></tr></thead><tbody>${state.materials.map(m=>`<tr><td>${esc(m.name)}<br><span class="hint">${esc(m.channel||'-')} · ${esc(m.owner||'-')}</span></td><td>${tags([m.gameplay,`${m.blockType}/${m.specialMaterial.join('+')}`,m.color,...m.core])}</td><td>${tags(m.extras)}</td><td>${m.maxChanges}</td><td><button class="small" onclick="edit('${m.id}')">编辑</button> <button class="small" onclick="generateById('${m.id}')">刷新</button> <button class="small danger" onclick="removeMaterial('${m.id}')">删除</button></td></tr>`).join('')}</tbody></table>`:'<div class="empty">尚未录入素材。</div>';
+  }
+  const EDITOR_KEY='hit-material-editor-settings-v1'; const editorSettings=()=>JSON.parse(localStorage.getItem(EDITOR_KEY)||'{}'); const saveEditorSettings=()=>localStorage.setItem(EDITOR_KEY,JSON.stringify({templatePath:$('templatePath').value.trim(),outputDirectory:$('videoOutputPath').value.trim()}));
+  async function checkEditor(){try{const r=await fetch('http://127.0.0.1:8765/api/editor/status');const d=await r.json();$('editorStatus').textContent=d.editorAvailable?`已连接编辑器：${d.editorPath}`:'没有找到 BlockPuzzleEditor.exe，请检查 F: 路径。';}catch{$('editorStatus').textContent='桥接服务未启动。请双击“启动变体生成器.cmd”，再通过打开的网页使用。';}}
+  window.sendToEditor=async id=>{const v=state.variants.find(x=>x.id===id);if(!v)return;if(v.gameplay!=='游戏玩法'){alert('只有“游戏玩法”变体可创建编辑器视频任务。');return;}const s=editorSettings();if(!s.templatePath&&!confirm('尚未配置基准关卡 JSON。将创建空白脚手架任务，需在编辑器内补齐棋盘与方块组。继续吗？'))return;try{const r=await fetch('http://127.0.0.1:8765/api/editor/create-task',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({variant:v,templatePath:s.templatePath||'',outputDirectory:s.outputDirectory||''})});const d=await r.json();if(!d.ok)throw new Error(d.error||'未知错误');v.videoTaskPath=d.taskDirectory;v.videoOutputDirectory=d.videoOutputDirectory;v.progress='进行中';save();render();alert(`已创建视频任务并打开编辑器。\n任务：${d.taskDirectory}\n视频输出：${d.videoOutputDirectory}`);}catch(e){alert(`无法创建编辑器任务：${e.message}\n请先双击 G:\\爆款素材变体生成器\\启动变体生成器.cmd`);}};
+  window.edit=edit;window.generateById=id=>{const m=state.materials.find(x=>x.id===id);if(m)generate(m)};window.setProgress=(id,value)=>{const v=state.variants.find(x=>x.id===id);if(v){v.progress=value;save();}};window.removeMaterial=id=>{if(confirm('删除素材及其全部变体记录？')){state.materials=state.materials.filter(x=>x.id!==id);state.variants=state.variants.filter(x=>x.sourceId!==id);save();render();resetForm();}};
+  $('materialForm').addEventListener('submit',e=>{e.preventDefault();const m=formMaterial(),err=valid(m);if(err){$('formStatus').textContent=err;return;}const i=state.materials.findIndex(x=>x.id===m.id);if(i>=0)state.materials[i]=m;else state.materials.push(m);save();render();if($('autoRefresh').checked)generate(m);else $('formStatus').textContent='素材已保存。';resetForm();});
+  $('generateBtn').onclick=()=>{const id=$('id').value;if(!id){$('formStatus').textContent='请先保存素材，再生成变体。';return;}generate(state.materials.find(x=>x.id===id));};$('resetBtn').onclick=resetForm;$('newBtn').onclick=resetForm;$('search').oninput=render;$('versionFilter').onchange=render;
+  $('refreshAllBtn').onclick=()=>{state.materials.filter(m=>!isHooked(m)).forEach(m=>generate(m));};
+  $('editorSettingsBtn').onclick=()=>{const s=editorSettings();$('templatePath').value=s.templatePath||'';$('videoOutputPath').value=s.outputDirectory||'G:\\爆款素材变体生成器\\变体视频';$('editorStatus').textContent='';$('editorDialog').showModal();checkEditor();};$('closeEditorDialog').onclick=()=>$('editorDialog').close();$('saveEditorSettings').onclick=()=>{saveEditorSettings();$('editorStatus').textContent='接口设置已保存。';};$('checkEditorBtn').onclick=checkEditor;
+  $('videoRebuildBtn').onclick=()=>{if(rebuildJob){$('videoDialog').showModal();setAnnotationStage('workbench');renderAnnotationTaskSummary();return;}resetAnnotationTask();$('videoDialog').showModal();};$('closeVideoDialog').onclick=()=>$('videoDialog').close();
+  function shapeGrid(action,index){const maxRow=Math.max(2,...action.shape.map(c=>c.row)),maxCol=Math.max(2,...action.shape.map(c=>c.col)),active=new Set(action.shape.map(c=>`${c.row}:${c.col}`));let cells='';for(let row=0;row<=maxRow;row++)for(let col=0;col<=maxCol;col++){const on=active.has(`${row}:${col}`);cells+=`<button type="button" class="shape-cell ${on?'on':''}" aria-label="形状 ${row},${col}" onclick="toggleActionCell(${index},${row},${col})"></button>`;}return `<div class="shape-grid" style="grid-template-columns:repeat(${maxCol+1},22px)">${cells}</div>`;}
+  function evidenceStrip(action){const labels={before:'放置前',action:'动作中',placed:'放置后',cleared:'消除后'},frames=action.evidenceFrames||{};return `<div class="evidence-strip">${Object.entries(labels).map(([key,label])=>{const path=frames[key];return `<div class="evidence-item">${path?`<a href="http://127.0.0.1:8765/${encodeURI(path)}" target="_blank"><img src="http://127.0.0.1:8765/${encodeURI(path)}" alt="步骤${action.stepIndex}${label}"></a>`:`<div class="evidence-missing">未捕获</div>`}<span>${label}</span></div>`;}).join('')}</div>`;}
+  function renderActionReview(){const unknown=actionDrafts.filter(a=>a.clearState==='unknown').length,emptyShapes=actionDrafts.filter(a=>!a.shape.length).length,unknownSlots=actionDrafts.filter(a=>+a.sourceSlot<0).length;$('analysisResult').innerHTML=`<div class="note">逐步核对动作脚本。蓝色格子代表方块形状；可修改出块、形状、落点和消除状态。所有步骤确认后才能生成完整视频。</div><div class="action-review">${actionDrafts.map((a,index)=>`<div class="action-row">${evidenceStrip(a)}<div><div class="action-step">步骤 ${a.stepIndex}</div><div class="hint">${esc(a.confidence)}</div></div><label class="action-field">出块位置<select onchange="updateAction(${index},'sourceSlot',this.value)"><option value="-1" ${+a.sourceSlot<0?'selected':''}>待确认</option>${['左侧','中间','右侧'].map((x,i)=>`<option value="${i}" ${i===+a.sourceSlot?'selected':''}>${x}</option>`).join('')}</select></label><div class="action-field">方块形状${shapeGrid(a,index)}</div><div class="action-field">棋盘落点<div class="split"><input type="number" min="0" max="${rebuildJob.analysis.board.rows-1}" value="${a.target.row}" aria-label="步骤${a.stepIndex}目标行" onchange="updateAction(${index},'targetRow',this.value)"><input type="number" min="0" max="${rebuildJob.analysis.board.cols-1}" value="${a.target.col}" aria-label="步骤${a.stepIndex}目标列" onchange="updateAction(${index},'targetCol',this.value)"></div><span>行 / 列，从0开始</span></div><label class="action-field">消除检测<select onchange="updateAction(${index},'clearState',this.value)"><option value="unknown" ${a.clearState==='unknown'?'selected':''}>待确认</option><option value="on" ${a.clearState==='on'?'selected':''}>启用</option><option value="off" ${a.clearState==='off'?'selected':''}>禁用</option></select></label><div class="action-meta">完整行：${a.clearedRows.length?a.clearedRows.join(', '):'无'}<br>完整列：${a.clearedCols.length?a.clearedCols.join(', '):'无'}<br>${esc(a.clearEvidence||'')}</div></div>`).join('')}</div><div class="review-actions"><span class="status">${unknown?`还有 ${unknown} 步消除状态待确认`:unknownSlots?`还有 ${unknownSlots} 步出块槽位待确认`:emptyShapes?`还有 ${emptyShapes} 步方块形状为空`:'所有步骤均可提交规则校验'}</span><button class="primary" id="confirmActionsBtn" ${(unknown||unknownSlots||emptyShapes)?'disabled':''}>确认动作脚本</button></div>`;const button=$('confirmActionsBtn');if(button)button.onclick=confirmActions;}
+  function updateAction(index,field,value){const action=actionDrafts[index];if(field==='sourceSlot')action.sourceSlot=+value;if(field==='targetRow')action.target.row=+value;if(field==='targetCol')action.target.col=+value;if(field==='clearState')action.clearState=value;actionsConfirmed=false;$('fullReplayBtn').disabled=true;renderActionReview();}
+  function toggleActionCell(index,row,col){const action=actionDrafts[index],at=action.shape.findIndex(c=>c.row===row&&c.col===col);if(at>=0)action.shape.splice(at,1);else action.shape.push({row,col});actionsConfirmed=false;$('fullReplayBtn').disabled=true;renderActionReview();}
+  function showActionSaveFeedback(kind,title,detail=''){const panel=$('actionSaveFeedback'),button=$('confirmActionsBtn');if(panel){panel.hidden=false;panel.className=`action-save-feedback ${kind}`;$('actionSaveFeedbackTitle').textContent=title;$('actionSaveFeedbackDetail').textContent=detail;const icon=kind==='success'?'circle-check-big':kind==='error'?'circle-x':'loader-circle';panel.querySelector('.action-save-feedback-icon').innerHTML=`<i data-lucide="${icon}"></i>`;}if(button){button.classList.toggle('save-complete',kind==='success');button.setAttribute('aria-busy',kind==='loading'?'true':'false');button.disabled=kind==='loading';const label=button.querySelector('span');if(label)label.textContent=kind==='loading'?'正在保存动作真值…':kind==='success'?'动作真值已保存':'重新保存动作真值';}refreshIcons();}
+  let annotationAnalyzeTimer=null,annotationAnalyzeStartedAt=0;
+  function updateAnnotationAnalyzeProgress(){
+    const elapsed=Math.max(0,Math.round((Date.now()-annotationAnalyzeStartedAt)/1000));
+    const stages=[
+      [8,'上传视频并创建任务'],
+      [22,'定位棋盘区域'],
+      [58,'扫描棋盘状态与出块'],
+      [82,'整理动作候选'],
+      [94,'生成标注草稿'],
+    ];
+    let percent=6,stage=stages[0][1];
+    if(elapsed<4){percent=8+elapsed*3;stage=stages[0][1];}
+    else if(elapsed<12){percent=22+(elapsed-4)*2.8;stage=stages[1][1];}
+    else if(elapsed<45){percent=44+(elapsed-12)*1.0;stage=stages[2][1];}
+    else if(elapsed<90){percent=77+(elapsed-45)*0.28;stage=stages[3][1];}
+    else {percent=Math.min(96,90+(elapsed-90)*0.04);stage=stages[4][1];}
+    const bar=$('annotationAnalyzeProgressBar'),detail=$('annotationAnalyzeDetail');
+    if(bar)bar.style.width=`${Math.min(96,Math.round(percent))}%`;
+    if(detail)detail.textContent=`${stage} · 已耗时 ${elapsed}s`;
+  }
+  function setVideoAnalyzeLoading(loading){const button=$('analyzeVideoBtn'),debugButton=$('debugAnalyzeBtn'),debugFps=$('debugSampleFps'),file=$('sourceVideo'),panel=$('annotationLoading');if(button){button.disabled=loading;button.setAttribute('aria-busy',String(loading));button.classList.toggle('loading',loading);button.innerHTML=`<i data-lucide="${loading?'loader-circle':'scan-search'}"></i><span>${loading?'正在识别…':'识别棋盘与动作'}</span>`;}if(debugButton)debugButton.disabled=loading;if(debugFps)debugFps.disabled=loading;if(file)file.disabled=loading;if(panel)panel.hidden=!loading;if(loading){annotationAnalyzeStartedAt=Date.now();clearInterval(annotationAnalyzeTimer);updateAnnotationAnalyzeProgress();annotationAnalyzeTimer=setInterval(updateAnnotationAnalyzeProgress,1000);}else{clearInterval(annotationAnalyzeTimer);annotationAnalyzeTimer=null;const bar=$('annotationAnalyzeProgressBar');if(bar)bar.style.width='0%';const detail=$('annotationAnalyzeDetail');if(detail)detail.textContent='准备上传样本视频...';}document.body.classList.toggle('annotation-is-loading',loading);refreshIcons();}
+  window.setVideoAnalyzeLoading=setVideoAnalyzeLoading;
+  function selectedSourceVideoName(){const file=$('sourceVideo')?.files?.[0];return file?.name||rebuildJob?.jobId||'当前视频任务';}
+  function renderAnnotationTaskSummary(){const actions=actionDrafts.filter(action=>!action.deleted),references=referenceInteractionDrafts.filter(item=>!item.deleted),verified=actions.filter(action=>action.manuallyVerified&&action.clearState!=='unknown'&&+action.sourceSlot>=0).length,host=$('annotationTaskSummary');if(!host)return;host.innerHTML=`<div class="task-summary-main"><span class="task-summary-icon"><i data-lucide="file-check-2"></i></span><div><strong>${esc(selectedSourceVideoName())}</strong><small>${actions.length} 步 · ${references.length} 条撤回候选 · ${verified}/${actions.length} 已核对</small></div></div><div class="task-summary-actions"><button type="button" class="command-button" id="newAnnotationTaskBtn"><i data-lucide="file-plus-2"></i><span>新建标注任务</span></button></div>`;$('newAnnotationTaskBtn').onclick=()=>{if(rebuildJob&&!confirm('新建标注任务会清空当前页面里的标注工作台，已保存的真值不会删除。继续吗？'))return;resetAnnotationTask();};refreshIcons();}
+  function setAnnotationStage(stage){const isWorkbench=stage==='workbench';$('annotationImport').hidden=isWorkbench;$('annotationTaskSummary').hidden=!isWorkbench;if(isWorkbench)renderAnnotationTaskSummary();else $('annotationTaskSummary').innerHTML='';}
+  function resetAnnotationTask(){rebuildJob=null;actionDrafts=[];referenceInteractionDrafts=[];referenceCandidateDrafts=[];actionsConfirmed=false;sourceCalibrationPoints=[];$('sourceVideo').value='';$('sourceVideoName').textContent='选择需要标注的视频';$('videoStatus').textContent='';$('analysisResult').innerHTML='';$('rebuildOptions').hidden=true;setVideoAnalyzeLoading(false);setAnnotationStage('setup');}
+  window.setAnnotationStage=setAnnotationStage;
+  window.renderAnnotationTaskSummary=renderAnnotationTaskSummary;
+  window.resetAnnotationTask=resetAnnotationTask;
+  $('dismissActionSaveFeedback').onclick=()=>{$('actionSaveFeedback').hidden=true;};
+  async function confirmActions(){if(actionDrafts.some(a=>!a.deleted&&a.clearState==='unknown')){showActionSaveFeedback('error','保存失败','仍有步骤的消除状态待确认。');return;}if(referenceInteractionDrafts.some(item=>!item.deleted&&!item.manuallyVerified)){showActionSaveFeedback('error','保存失败','仍有撤回交互尚未确认。');return;}$('videoStatus').textContent='正在从初始棋盘重新模拟并保存全部步骤…';showActionSaveFeedback('loading','正在校验并保存','请不要关闭窗口，完成后会显示明确结果。');try{const r=await fetch('http://127.0.0.1:8765/api/video/confirm-actions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jobId:rebuildJob.jobId,actions:actionDrafts,referenceInteractions:referenceInteractionDrafts})});let d;try{d=await r.json();}catch{throw new Error(`服务器返回了无法解析的响应（HTTP ${r.status}）`);}if(!r.ok||!d.ok)throw new Error(d.error||`服务器返回 HTTP ${r.status}`);actionsConfirmed=true;$('rebuildOptions').hidden=false;$('fullReplayBtn').disabled=false;const savedAt=(d.confirmedAt||new Date().toLocaleString('zh-CN')).replace('T',' ');const message=`动作真值保存成功：${d.stepCount} 步，保存时间 ${savedAt}`;$('videoStatus').textContent=message;showActionSaveFeedback('success','动作真值已成功保存',`${d.stepCount} 步 · ${referenceInteractionDrafts.filter(item=>!item.deleted).length} 条撤回交互 · ${savedAt}`);renderActionReview();loadTruthProgress();}catch(e){actionsConfirmed=false;$('rebuildOptions').hidden=true;$('fullReplayBtn').disabled=true;const message=`动作真值保存失败：${e.message}`;$('videoStatus').textContent=message;showActionSaveFeedback('error','动作真值保存失败',e.message);}}
+  $('analyzeVideoBtn').onclick=async()=>{const file=$('sourceVideo').files[0];if(!file){$('videoStatus').textContent='请先选择一个原视频。';return;}$('videoStatus').textContent='正在按原始帧率扫描整段视频，请稍候…';$('analysisResult').innerHTML='';$('rebuildOptions').hidden=true;actionsConfirmed=false;setVideoAnalyzeLoading(true);try{const form=new FormData();form.append('video',file);const r=await fetch('http://127.0.0.1:8765/api/video/analyze',{method:'POST',body:form});const d=await r.json();if(!d.ok)throw new Error(d.error);rebuildJob=d;const a=d.analysis;actionDrafts=structuredClone(a.reviewActions||[]);referenceInteractionDrafts=structuredClone(a.timeline?.referenceInteractions||[]);$('videoStatus').textContent=`识别完成：${a.duration}s，${a.fps}fps；识别到 ${actionDrafts.length} 个有效动作、${referenceInteractionDrafts.length} 条撤回交互。`;$('rebuildName').value=file.name.replace(/\.[^.]+$/,'')+' · 视频重建变体';$('rebuildOptions').hidden=true;$('fullReplayBtn').disabled=true;setAnnotationStage('workbench');renderActionReview();}catch(e){$('videoStatus').textContent=`视频分析失败：${e.message}`;setAnnotationStage('setup');}finally{setVideoAnalyzeLoading(false);}};
+  function renderDebugAnalysis(data){
+    const analysis=data.analysis||{},actions=analysis.reviewActions||[],timeline=analysis.timeline||{};
+    const cards=actions.map((action,index)=>{const frame=action.evidenceFrames?.placed||action.framePath||action.evidenceFrames?.action||'';const src=frame?`http://127.0.0.1:8765/${encodeURI(frame)}?t=${Date.now()}`:'';const reasons=(action.candidateReasons||[]).slice(0,3).join(', ');return `<div class="debug-action-card"><strong>#${index+1} · ${(+action.time||0).toFixed(3)}s</strong>${src?`<a href="${src}" target="_blank"><img src="${src}" alt="调试识别步骤 ${index+1}"></a>`:'<div class="evidence-missing" style="width:100%;height:150px">无证据帧</div>'}<div class="debug-action-meta">槽位：${['左侧','中间','右侧'][action.sourceSlot]||'待确认'}<br>落点：${action.target?.row ?? '-'}, ${action.target?.col ?? '-'} · 形状 ${action.shape?.length||0} 格<br>消除：${action.clearState||'-'}${reasons?`<br>原因：${esc(reasons)}`:''}</div></div>`;}).join('');
+    $('analysisResult').innerHTML=`<div class="debug-panel"><div><strong>调试识别结果</strong><div class="hint">这份结果只用于比较采样 fps，不会覆盖当前正式标注任务。</div></div><div class="debug-summary"><span class="debug-chip">采样 ${analysis.debugSampleFps||timeline.sampleRate||'-'} fps</span><span class="debug-chip">原视频 ${analysis.fps||'-'} fps</span><span class="debug-chip">采样帧 ${timeline.sampleCount||0}</span><span class="debug-chip">事件 ${actions.length}</span><span class="debug-chip">${esc(analysis.recognitionStrategy||'-')}</span></div><div class="debug-action-grid">${cards||'<div class="empty">没有识别到动作。</div>'}</div></div>`;
+    refreshIcons();
+  }
+  async function runDebugAnalyze(){
+    const file=$('sourceVideo').files[0];if(!file){$('videoStatus').textContent='请先选择一个原视频。';return;}
+    const fps=+$('debugSampleFps').value||12;
+    $('videoStatus').textContent=`正在以 ${fps}fps 做调试识别…`;
+    $('analysisResult').innerHTML='';
+    $('rebuildOptions').hidden=true;
+    setVideoAnalyzeLoading(true);
+    try{
+      const form=new FormData();form.append('video',file);form.append('sampleFps',String(fps));
+      const r=await fetch('http://127.0.0.1:8765/api/video/debug-analyze',{method:'POST',body:form});
+      const d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||`HTTP ${r.status}`);
+      $('videoStatus').textContent=`调试识别完成：${d.analysis.duration}s，采样 ${d.analysis.debugSampleFps}fps，识别到 ${(d.analysis.reviewActions||[]).length} 个动作。`;
+      renderDebugAnalysis(d);
+    }catch(e){$('videoStatus').textContent=`调试识别失败：${e.message}`;}
+    finally{setVideoAnalyzeLoading(false);}
+  }
+  $('debugAnalyzeBtn').onclick=runDebugAnalyze;
+  window.runVideoAnnotationAnalyze=$('analyzeVideoBtn').onclick;
+  $('recordRebuildBtn').onclick=async()=>{if(!rebuildJob)return;$('videoStatus').textContent='正在生成关卡草稿并启动预览录制…';try{const r=await fetch('http://127.0.0.1:8765/api/video/record',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jobId:rebuildJob.jobId,name:$('rebuildName').value.trim(),outputDirectory:$('rebuildOutput').value.trim(),backgroundId:$('rebuildBackground').value,blockStyle:$('rebuildBlockStyle').value})});const d=await r.json();if(!d.ok)throw new Error(d.error);$('videoStatus').textContent=`已启动自动录制。识别到 ${d.detectedBlockCount} 个棋盘方块，视频将输出到：${d.videoOutputDirectory}`;}catch(e){$('videoStatus').textContent=`启动录制失败：${e.message}`;}};
+  async function waitReplayStatus(jobId){for(let i=0;i<100;i++){await new Promise(r=>setTimeout(r,2000));try{const r=await fetch(`http://127.0.0.1:8765/api/video/status?jobId=${encodeURIComponent(jobId)}`);const d=await r.json();if(d.status==='complete'){$('videoStatus').textContent=`生成完成：${d.outputVideo}（恒定 ${d.fps}fps）`;return;}if(d.status==='failed'){$('videoStatus').textContent=`视频生成失败：${d.message}`;return;}$('videoStatus').textContent=d.message||'正在生成视频…';}catch{}}$('videoStatus').textContent='客户端仍在处理，可稍后在输出目录查看结果。';}
+  $('fullReplayBtn').onclick=async()=>{if(!rebuildJob)return;if(!actionsConfirmed){$('videoStatus').textContent='请先确认全部动作步骤。';return;}$('videoStatus').textContent='正在生成确定性回放计划并启动改造版客户端…';try{const r=await fetch('http://127.0.0.1:8765/api/video/replay',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jobId:rebuildJob.jobId,name:$('rebuildName').value.trim(),outputDirectory:$('rebuildOutput').value.trim(),backgroundId:$('rebuildBackground').value,blockStyle:$('rebuildBlockStyle').value})});const d=await r.json();if(!d.ok)throw new Error(d.error);$('videoStatus').textContent=`内部回放已启动：共 ${d.stepCount} 步、${d.presetCount} 次棋盘切换，完成后自动转为 60fps。`;waitReplayStatus(rebuildJob.jobId);}catch(e){$('videoStatus').textContent=`完整回放启动失败：${e.message}`;}};
+  $('calibrateBtn').onclick=()=>{$('calibrationStatus').textContent='';$('calibrationHint').textContent='先启动校准预览，再把预览窗口置于前台并截图。';$('calibrationImage').style.display='none';$('saveCalibrationBtn').disabled=true;$('calibrationDialog').showModal();};$('closeCalibrationDialog').onclick=()=>$('calibrationDialog').close();
+  $('startCalibrationBtn').onclick=async()=>{try{$('calibrationStatus').textContent='正在启动校准预览…';const r=await fetch('http://127.0.0.1:8765/api/calibration/start',{method:'POST'});const d=await r.json();if(!d.ok)throw new Error(d.error);$('calibrationStatus').textContent=d.message;}catch(e){$('calibrationStatus').textContent=`启动失败：${e.message}`;}};
+  $('captureCalibrationBtn').onclick=async()=>{try{$('calibrationStatus').textContent='正在截取当前屏幕…';const r=await fetch('http://127.0.0.1:8765/api/calibration/screenshot');const d=await r.json();if(!d.ok)throw new Error(d.error);calibrationCapture=d;calibrationPoints=[];const img=$('calibrationImage');img.src=`http://127.0.0.1:8765/${encodeURI(d.imagePath)}?t=${Date.now()}`;img.style.display='block';$('saveCalibrationBtn').disabled=true;$('calibrationStatus').textContent='已截图。请在截图中点击棋盘外框的左上角，再点击右下角。';$('calibrationHint').textContent=`自动建议：x=${d.suggestedBoard.x}, y=${d.suggestedBoard.y}, 宽=${d.suggestedBoard.width}, 高=${d.suggestedBoard.height}。`;}catch(e){$('calibrationStatus').textContent=`截图失败：${e.message}`;}};
+  $('calibrationImage').onclick=e=>{if(!calibrationCapture)return;const rect=e.currentTarget.getBoundingClientRect(),sx=calibrationCapture.screen.width/rect.width,sy=calibrationCapture.screen.height/rect.height;calibrationPoints.push({x:Math.round((e.clientX-rect.left)*sx),y:Math.round((e.clientY-rect.top)*sy)});if(calibrationPoints.length===1){$('calibrationStatus').textContent='已记录左上角，请点击棋盘外框的右下角。';return;}if(calibrationPoints.length===2){const [a,b]=calibrationPoints;const board={x:Math.min(a.x,b.x),y:Math.min(a.y,b.y),width:Math.abs(a.x-b.x),height:Math.abs(a.y-b.y)};$('calibrationHint').textContent=`已选棋盘：x=${board.x}, y=${board.y}, 宽=${board.width}, 高=${board.height}。确认后保存。`;$('saveCalibrationBtn').disabled=false;return;}calibrationPoints=[];$('saveCalibrationBtn').disabled=true;$('calibrationStatus').textContent='已重置，请重新点击左上角。';};
+  $('saveCalibrationBtn').onclick=async()=>{if(calibrationPoints.length!==2)return;const [a,b]=calibrationPoints;const board={x:Math.min(a.x,b.x),y:Math.min(a.y,b.y),width:Math.abs(a.x-b.x),height:Math.abs(a.y-b.y)};try{const r=await fetch('http://127.0.0.1:8765/api/calibration/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({screen:calibrationCapture.screen,board})});const d=await r.json();if(!d.ok)throw new Error(d.error);$('calibrationStatus').textContent=`校准已保存：单格约 ${d.calibration.cellWidth.toFixed(1)} × ${d.calibration.cellHeight.toFixed(1)} 像素。`;}catch(e){$('calibrationStatus').textContent=`保存失败：${e.message}`;}};
+  $('demoBtn').onclick=()=>{if(state.materials.length&&!confirm('现有数据不会删除；继续加入示例？'))return;const demo=[{name:'0701_彩块02',channel:'google',owner:'ivy',duration:'60s以内',size:'竖版',gameplay:'俄罗斯方块玩法',blockType:'经典块',specialMaterial:['无'],color:'彩色',dimension:'3D',hook:'无钩子',hookIntro:'',extras:['前3s大面积消除'],core:['俄罗斯方块玩法','彩色'],maxChanges:3},{name:'2677_粉沙块玩法',channel:'google',owner:'ivy',duration:'60s以内',size:'竖版',gameplay:'游戏玩法',blockType:'特殊块',specialMaterial:['粉沙块'],color:'彩色',dimension:'2D',hook:'无钩子',hookIntro:'',extras:['连消'],core:['粉沙块','彩色'],maxChanges:3}];demo.forEach(x=>{if(!state.materials.some(m=>m.name===x.name)){x.id=uid();state.materials.push(x);}});save();render();};
+  $('exportBtn').onclick=()=>download('爆款素材变体备份.json',JSON.stringify(state,null,2),'application/json');$('exportCsvBtn').onclick=()=>{const rows=[['来源素材','渠道','负责人','变体名称','等级','保留特征','改动维度','附加特征','需求进度','是否当前版本'],...state.variants.filter(v=>v.current).map(v=>[v.sourceName,v.channel,v.owner,v.variantName,v.tier,join(v.retained),join(v.changed),join(v.extras),v.progress,v.current?'是':'否'])];download('素材变体库.csv','\ufeff'+rows.map(r=>r.map(x=>'"'+String(x).replaceAll('"','""')+'"').join(',')).join('\n'),'text/csv;charset=utf-8');};
+  function download(name,body,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([body],{type}));a.download=name;a.click();URL.revokeObjectURL(a.href);} $('importBtn').onclick=()=>$('importFile').click();$('importFile').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);if(!Array.isArray(d.materials)||!Array.isArray(d.variants))throw 0;state.materials=d.materials.map(normalize);state.variants=d.variants;save();render();alert('导入成功');}catch{alert('备份格式无效');}};r.readAsText(f);};$('clearBtn').onclick=()=>{if(confirm('确定清空本地素材和变体？')){state.materials=[];state.variants=[];save();render();resetForm();}};
+  render();
+  const baseRenderActionReview=renderActionReview;
+  evidenceStrip=action=>{const labels={before:'放置前',action:'动作中',placed:'放置后',cleared:'消除后'},frames=action.evidenceFrames||{};return `<div class="evidence-strip">${Object.entries(labels).map(([key,label])=>{const path=frames[key];return `<div class="evidence-item">${path?`<a href="http://127.0.0.1:8765/${encodeURI(path)}" target="_blank"><img loading="lazy" decoding="async" src="http://127.0.0.1:8765/${encodeURI(path)}" alt="步骤${action.stepIndex}${label}"></a>`:`<div class="evidence-missing">未捕获</div>`}<span>${label}</span></div>`;}).join('')}</div>`;};
+  shapeGrid=(action,index)=>{const boardRows=+rebuildJob.analysis.board.rows,boardCols=+rebuildJob.analysis.board.cols,maxRow=Math.min(boardRows-1,Math.max(4,...action.shape.map(c=>c.row))),maxCol=Math.min(boardCols-1,Math.max(4,...action.shape.map(c=>c.col))),active=new Set(action.shape.map(c=>`${c.row}:${c.col}`));let cells='';for(let row=0;row<=maxRow;row++)for(let col=0;col<=maxCol;col++){cells+=`<button type="button" class="shape-cell ${active.has(`${row}:${col}`)?'on':''}" aria-label="形状 ${row},${col}" onclick="toggleActionCell(${index},${row},${col})"></button>`;}return `<div class="shape-grid" style="grid-template-columns:repeat(${maxCol+1},22px)">${cells}</div>`;};
+  renderActionReview=()=>{baseRenderActionReview();let hasPlacementConflict=false;document.querySelectorAll('.action-row').forEach((row,index)=>{const solutions=actionDrafts[index]?.candidateSolutions||[];if(solutions.length){const step=row.querySelector('.action-step'),select=document.createElement('select');select.style.marginTop='5px';select.innerHTML='<option value="">选择合法候选</option>'+solutions.map((s,i)=>`<option value="${i}">${i+1}. ${['左','中','右'][s.sourceSlot]}槽 → (${s.target.row},${s.target.col}) · ${s.shape.length}格 · ${s.clearMode}</option>`).join('');select.onchange=()=>{if(select.value!=='')applyActionCandidate(index,+select.value);};step?.insertAdjacentHTML('beforeend',`<div class="tag gold">${solutions.length} 个合法候选</div>`);step?.appendChild(select);}const placement=actionPlacementState(actionDrafts[index]);hasPlacementConflict ||= placement.overlaps.length>0||placement.outOfBounds.length>0;row.insertAdjacentHTML('beforeend',placementBoardHtml(actionDrafts[index],index,placement));});const confirm=$('confirmActionsBtn');if(confirm&&hasPlacementConflict)confirm.disabled=true;renderSourceCalibration();renderVersionPicker();};
+  function actionPlacementState(action){const rows=+rebuildJob.analysis.board.rows,cols=+rebuildJob.analysis.board.cols,before=action.liveBeforeBoard||action.manualBeforeBoard||action.beforeBoard||Array.from({length:rows},()=>Array(cols).fill(null)),after=action.recognizedAfterBoard||action.afterBoard||[],beforeSet=new Set(),shapePreview=new Set(),overlaps=[],outOfBounds=[];for(let row=0;row<rows;row++)for(let col=0;col<cols;col++)if(before[row]?.[col]!==null&&before[row]?.[col]!==undefined)beforeSet.add(`${row}:${col}`);for(const cell of action.shape){const row=+action.target.row+cell.row,col=+action.target.col+cell.col,key=`${row}:${col}`;if(row<0||col<0||row>=rows||col>=cols)outOfBounds.push(key);else if(beforeSet.has(key))overlaps.push(key);else shapePreview.add(key);}const afterSet=new Set();if(Array.isArray(after)&&after.length)for(let row=0;row<rows;row++)for(let col=0;col<cols;col++)if(after[row]?.[col]!==null&&after[row]?.[col]!==undefined)afterSet.add(`${row}:${col}`);let occupied=new Set(beforeSet),preview=new Set(shapePreview);if(afterSet.size){preview=new Set([...afterSet].filter(key=>!beforeSet.has(key)));occupied=new Set([...afterSet].filter(key=>!preview.has(key)));}const filled=new Set([...occupied,...preview,...overlaps]),completeRows=[],completeCols=[];for(let row=0;row<rows;row++)if(Array.from({length:cols},(_,col)=>filled.has(`${row}:${col}`)).every(Boolean))completeRows.push(row);for(let col=0;col<cols;col++)if(Array.from({length:rows},(_,row)=>filled.has(`${row}:${col}`)).every(Boolean))completeCols.push(col);return{rows,cols,occupied,preview,overlaps,outOfBounds,completeRows,completeCols};}
+  function boardSetExtent(set){if(!set.size)return '0 格';const points=[...set].map(key=>key.split(':').map(Number)),rows=points.map(point=>point[0]),cols=points.map(point=>point[1]),rowMin=Math.min(...rows),rowMax=Math.max(...rows),colMin=Math.min(...cols),colMax=Math.max(...cols);return `${set.size} 格 · 行 ${rowMin}${rowMax===rowMin?'':`–${rowMax}`} / 列 ${colMin}${colMax===colMin?'':`–${colMax}`}`;}
+  function placementBoardHtml(action,index,state){const overlapSet=new Set(state.overlaps),completeCells=new Set;for(const row of state.completeRows)for(let col=0;col<state.cols;col++)completeCells.add(`${row}:${col}`);for(const col of state.completeCols)for(let row=0;row<state.rows;row++)completeCells.add(`${row}:${col}`);let cells='';for(let row=0;row<state.rows;row++)for(let col=0;col<state.cols;col++){const key=`${row}:${col}`,classes=['placement-cell'];if(state.occupied.has(key))classes.push('occupied');if(state.preview.has(key))classes.push('preview');if(overlapSet.has(key))classes.push('overlap');if(completeCells.has(key))classes.push('complete');cells+=`<button type="button" class="${classes.join(' ')}" onclick="setActionTarget(${index},${row},${col})" aria-label="步骤${action.stepIndex}棋盘${row},${col}" title="将方块左上锚点放到第${row}行第${col}列"></button>`;}const conflicts=[state.overlaps.length&&`重叠 ${state.overlaps.join('、')}`,state.outOfBounds.length&&`越界 ${state.outOfBounds.join('、')}`].filter(Boolean);return `<div class="placement-editor"><div class="placement-board-panel"><div class="placement-board-legend"><span class="placement-key"><i class="placement-swatch"></i>原棋盘 ${boardSetExtent(state.occupied)}</span><span class="placement-key"><i class="placement-swatch preview"></i>本步放置 ${action.shape.length} 格</span></div><div class="placement-board" style="grid-template-columns:repeat(${state.cols},30px)">${cells}</div></div><div class="placement-info"><strong>步骤 ${action.stepIndex} 落点预览</strong><span>红色表示重叠，黄色边框表示放置后形成完整行列。</span><span>点击棋盘任意格，将该格设为方块左上锚点；也可以继续使用上方行列输入框。</span><span class="${conflicts.length?'placement-error':'placement-ok'}">${conflicts.length?conflicts.join('；'):`当前位置合法${state.completeRows.length||state.completeCols.length?`，形成完整行 ${state.completeRows.join(',')||'无'} / 列 ${state.completeCols.join(',')||'无'}`:''}`}</span></div></div>`;}
+  function setActionTarget(index,row,col){actionDrafts[index].target={row,col};actionsConfirmed=false;$('fullReplayBtn').disabled=true;renderActionReview();}
+  function applyActionCandidate(actionIndex,candidateIndex){const action=actionDrafts[actionIndex],candidate=action.candidateSolutions[candidateIndex];if(!candidate)return;action.sourceSlot=candidate.sourceSlot;action.target={...candidate.target};action.shape=candidate.shape.map(c=>({row:c.row,col:c.col}));action.clearState=candidate.clearMode==='immediate'?'on':'off';actionsConfirmed=false;$('fullReplayBtn').disabled=true;renderActionReview();}
+  function renderSourceCalibration(){if(!rebuildJob?.analysis?.board?.calibrationFrame)return;const board=rebuildJob.analysis.board,host=document.createElement('div');host.className='source-calibration';host.innerHTML=`<div class="split" style="justify-content:space-between"><strong>源视频棋盘校准</strong><span class="hint">在图中依次点击棋盘左上角、右下角，修改后会重新扫描全部动作。</span></div><div class="source-calibration-controls"><label>X<input id="sourceBoardX" type="number" value="${board.x}"></label><label>Y<input id="sourceBoardY" type="number" value="${board.y}"></label><label>宽<input id="sourceBoardW" type="number" value="${board.width}"></label><label>高<input id="sourceBoardH" type="number" value="${board.height}"></label><label>行<input id="sourceBoardRows" type="number" min="3" max="20" value="${board.rows}"></label><label>列<input id="sourceBoardCols" type="number" min="3" max="20" value="${board.cols}"></label><button type="button" id="recalibrateSourceBtn">按此棋盘重新识别</button></div><div class="source-frame-wrap"><img id="sourceCalibrationImage" src="http://127.0.0.1:8765/${encodeURI(board.calibrationFrame)}?t=${Date.now()}" alt="源视频棋盘校准帧"><div class="source-board-box" id="sourceBoardBox"></div></div>`;$('analysisResult').prepend(host);const image=$('sourceCalibrationImage');image.onclick=e=>{const rect=image.getBoundingClientRect(),scaleX=image.naturalWidth/rect.width,scaleY=image.naturalHeight/rect.height;sourceCalibrationPoints.push({x:Math.round((e.clientX-rect.left)*scaleX),y:Math.round((e.clientY-rect.top)*scaleY)});if(sourceCalibrationPoints.length>2)sourceCalibrationPoints=[sourceCalibrationPoints.at(-1)];if(sourceCalibrationPoints.length===2){const [a,b]=sourceCalibrationPoints;$('sourceBoardX').value=Math.min(a.x,b.x);$('sourceBoardY').value=Math.min(a.y,b.y);$('sourceBoardW').value=Math.abs(a.x-b.x);$('sourceBoardH').value=Math.abs(a.y-b.y);updateSourceBoardBox();}};image.onload=updateSourceBoardBox;['sourceBoardX','sourceBoardY','sourceBoardW','sourceBoardH'].forEach(id=>$(id).oninput=updateSourceBoardBox);$('recalibrateSourceBtn').onclick=recalibrateSourceVideo;}
+  function updateSourceBoardBox(){const image=$('sourceCalibrationImage'),box=$('sourceBoardBox');if(!image||!box||!image.naturalWidth)return;const sx=image.clientWidth/image.naturalWidth,sy=image.clientHeight/image.naturalHeight;box.style.left=`${+$('sourceBoardX').value*sx}px`;box.style.top=`${+$('sourceBoardY').value*sy}px`;box.style.width=`${+$('sourceBoardW').value*sx}px`;box.style.height=`${+$('sourceBoardH').value*sy}px`;}
+  async function recalibrateSourceVideo(){const board={x:+$('sourceBoardX').value,y:+$('sourceBoardY').value,width:+$('sourceBoardW').value,height:+$('sourceBoardH').value,rows:+$('sourceBoardRows').value,cols:+$('sourceBoardCols').value};$('videoStatus').textContent='正在按人工棋盘范围重新扫描整段视频…';actionsConfirmed=false;try{const r=await fetch('http://127.0.0.1:8765/api/video/recalibrate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jobId:rebuildJob.jobId,board})});const d=await r.json();if(!d.ok)throw new Error(d.error);rebuildJob=d;actionDrafts=structuredClone(d.analysis.reviewActions||[]);referenceInteractionDrafts=structuredClone(d.analysis.timeline?.referenceInteractions||[]);window.resetAnnotationHistory?.();$('fullReplayBtn').disabled=true;$('videoStatus').textContent=`人工校准完成：${d.analysis.board.rows}×${d.analysis.board.cols}，识别到 ${actionDrafts.length} 个有效动作、${referenceInteractionDrafts.length} 条撤回交互。`;sourceCalibrationPoints=[];renderActionReview();}catch(e){$('videoStatus').textContent=`人工校准失败：${e.message}`;}}
+  async function renderVersionPicker(){if(!rebuildJob)return;const host=document.createElement('div');host.className='toolrow';host.style.marginTop='8px';host.innerHTML='<select id="actionVersionSelect" style="width:auto;min-width:260px"><option>正在读取动作版本…</option></select><button type="button" id="restoreActionVersionBtn">恢复所选版本</button>';$('analysisResult').prepend(host);try{const r=await fetch(`http://127.0.0.1:8765/api/video/versions?jobId=${encodeURIComponent(rebuildJob.jobId)}`),d=await r.json();if(!d.ok)throw new Error(d.error);$('actionVersionSelect').innerHTML=d.versions.length?d.versions.map(v=>`<option value="${esc(v.id)}">${esc(v.savedAt)} · ${esc(v.kind)}</option>`).join(''):'<option value="">暂无版本</option>';$('restoreActionVersionBtn').disabled=!d.versions.length;$('restoreActionVersionBtn').onclick=restoreActionVersion;}catch(e){host.innerHTML=`<span class="status">读取动作版本失败：${esc(e.message)}</span>`;}}
+  async function restoreActionVersion(){const versionId=$('actionVersionSelect').value;if(!versionId)return;try{const r=await fetch('http://127.0.0.1:8765/api/video/restore-version',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jobId:rebuildJob.jobId,versionId})}),d=await r.json();if(!d.ok)throw new Error(d.error);actionsConfirmed=d.status==='confirmed';if(d.analysis){rebuildJob.analysis=d.analysis;actionDrafts=structuredClone(d.analysis.reviewActions||[]);referenceInteractionDrafts=structuredClone(d.analysis.timeline?.referenceInteractions||[]);window.resetAnnotationHistory?.();renderActionReview();}$('rebuildOptions').hidden=!actionsConfirmed;$('fullReplayBtn').disabled=!actionsConfirmed;$('videoStatus').textContent=actionsConfirmed?'已恢复人工确认版本，可以生成完整视频。':'已恢复识别草稿，请重新核对并确认动作。';}catch(e){$('videoStatus').textContent=`恢复版本失败：${e.message}`;}}
+  toggleActionCell=(index,row,col)=>{const action=actionDrafts[index],at=action.shape.findIndex(c=>c.row===row&&c.col===col);if(at>=0)action.shape.splice(at,1);else action.shape.push({row,col});if(action.shape.length){const minRow=Math.min(...action.shape.map(c=>c.row)),minCol=Math.min(...action.shape.map(c=>c.col));action.target.row+=minRow;action.target.col+=minCol;action.shape=action.shape.map(c=>({row:c.row-minRow,col:c.col-minCol}));}actionsConfirmed=false;$('fullReplayBtn').disabled=true;renderActionReview();};
+  function recomputeActionBoards(){const sig=board=>JSON.stringify((board||[]).map(row=>(row||[]).map(cell=>cell!==null&&cell!==undefined)));let current=null,upstreamInvalid=false;for(const action of actionDrafts){if(action.deleted)continue;const manuallyCorrected=Array.isArray(action.manualBeforeBoard),recognized=structuredClone((manuallyCorrected?action.manualBeforeBoard:action.beforeBoard)||[]);if(!current||action.resetBefore||manuallyCorrected||sig(current)!==sig(recognized)){current=recognized;upstreamInvalid=false;}action.liveBeforeBoard=structuredClone(current);action.upstreamInvalid=upstreamInvalid;const placements=action.shape.map(cell=>({row:+action.target.row+cell.row,col:+action.target.col+cell.col})),invalid=placements.some(({row,col})=>row<0||col<0||row>=current.length||col>=(current[0]?.length||0)||current[row][col]!==null);if(!invalid)for(const {row,col} of placements)current[row][col]=1;if(action.clearState==='on'&&!invalid){const fullRows=new Set(current.map((line,row)=>line.every(cell=>cell!==null)?row:-1).filter(row=>row>=0)),fullCols=new Set;for(let col=0;col<(current[0]?.length||0);col++)if(current.every(line=>line[col]!==null))fullCols.add(col);for(let row=0;row<current.length;row++)for(let col=0;col<current[row].length;col++)if(fullRows.has(row)||fullCols.has(col))current[row][col]=null;}upstreamInvalid ||= invalid;}}
+  const recognizedActionPlacementState=actionPlacementState;
+  actionPlacementState=action=>{const recognized=action.beforeBoard;action.beforeBoard=action.liveBeforeBoard||recognized;const result=recognizedActionPlacementState(action);action.beforeBoard=recognized;result.upstreamInvalid=action.upstreamInvalid;return result;};
+  let activeActionEditor=0;
+  let lastDeletedActionIndex=-1;
+  const fullPlacementBoardHtml=placementBoardHtml;
+  placementBoardHtml=(action,index,state)=>{if(index===activeActionEditor)return fullPlacementBoardHtml(action,index,state);const conflictCount=state.overlaps.length+state.outOfBounds.length;return `<div class="placement-editor" style="grid-template-columns:1fr auto"><div class="${conflictCount?'placement-error':'placement-ok'}">步骤 ${action.stepIndex}：${conflictCount?`${conflictCount} 个冲突需要处理`:'落点合法'}，锚点 (${action.target.row}, ${action.target.col})，方块 ${action.shape.length} 格</div><button type="button" class="step-toggle" onclick="toggleActionEditor(${index})" aria-expanded="false" aria-label="展开步骤 ${action.stepIndex} 棋盘" title="展开步骤 ${action.stepIndex} 棋盘"><i data-lucide="chevron-right"></i></button></div>`;};
+  function setStepToggleState(summary,expanded){if(!summary)return;summary.classList.toggle('active',expanded);const button=summary.querySelector('.step-toggle'),step=summary.dataset.summaryStep,label=`${expanded?'收起':'展开'}步骤 ${step} 棋盘`;if(button){button.setAttribute('aria-expanded',String(expanded));button.setAttribute('aria-label',label);button.title=label;button.innerHTML=`<i data-lucide="${expanded?'chevron-down':'chevron-right'}"></i>`;}}
+  function toggleActionEditor(index){const action=actionDrafts[index],summary=document.querySelector(`.action-summary-row[data-summary-step="${action.stepIndex}"]`),currentEditor=document.querySelector('.action-editor-row'),currentSummary=document.querySelector('.action-summary-row.active'),wasOpen=activeActionEditor===index;if(currentEditor)currentEditor.remove();setStepToggleState(currentSummary,false);if(wasOpen){activeActionEditor=-1;refreshIcons();return;}recomputeActionBoards();activeActionEditor=index;const state=actionPlacementState(action);setStepToggleState(summary,true);summary.insertAdjacentHTML('afterend',compactActionEditorHtml(action,index,state));refreshIcons();}
+  function deleteActionStep(index){const action=actionDrafts[index];if(!action||action.deleted)return;action.originalStepIndex??=action.stepIndex;action.deleted=true;lastDeletedActionIndex=index;activeActionEditor=-1;renumberVisibleActions();actionsConfirmed=false;$('fullReplayBtn').disabled=true;renderActionReview();}
+  function undoDeletedAction(){const action=actionDrafts[lastDeletedActionIndex];if(!action?.deleted)return;action.deleted=false;lastDeletedActionIndex=-1;renumberVisibleActions();renderActionReview();}
+  function renumberVisibleActions(){let step=1;for(const item of actionDrafts)if(!item.deleted)item.stepIndex=step++;}
+  function deletionNoticeHtml(){const action=actionDrafts[lastDeletedActionIndex];return action?.deleted?`<div class="note" style="display:flex;justify-content:space-between;align-items:center"><span>已删除原步骤 ${action.originalStepIndex}，后续步骤已重新编号并重算。</span><button type="button" onclick="undoDeletedAction()">撤销</button></div>`:'';}
+  const cascadeRenderActionReview=renderActionReview;
+  renderActionReview=()=>{recomputeActionBoards();cascadeRenderActionReview();};
+  async function loadVideoJobFromQuery(){const jobId=new URLSearchParams(location.search).get('job');if(!jobId)return;try{const r=await fetch(`http://127.0.0.1:8765/api/video/task?jobId=${encodeURIComponent(jobId)}`),d=await r.json();if(!d.ok)throw new Error(d.error);rebuildJob=d;actionDrafts=structuredClone(d.analysis.reviewActions||[]);referenceInteractionDrafts=structuredClone(d.analysis.timeline?.referenceInteractions||[]);actionsConfirmed=d.reviewStatus?.status==='confirmed';$('rebuildName').value=jobId+' · 视频重建变体';$('rebuildOptions').hidden=!actionsConfirmed;$('fullReplayBtn').disabled=!actionsConfirmed;$('videoStatus').textContent=`已恢复任务：${actionDrafts.length} 个有效动作、${referenceInteractionDrafts.length} 条撤回交互。`;$('videoDialog').showModal();setAnnotationStage('workbench');renderActionReview();}catch(e){$('videoStatus').textContent=`恢复视频任务失败：${e.message}`;$('videoDialog').showModal();setAnnotationStage('setup');}}
+  function candidateSelectHtml(action,index){const solutions=action.candidateSolutions||[];if(!solutions.length)return '';return `<label class="action-field">合法候选<select onchange="if(this.value!=='')applyActionCandidate(${index},+this.value)"><option value="">选择候选</option>${solutions.map((s,i)=>`<option value="${i}">${i+1}. ${['左','中','右'][s.sourceSlot]}槽 → (${s.target.row},${s.target.col}) · ${s.shape.length}格</option>`).join('')}</select></label>`;}
+  function compactActionEditorHtml(action,index,state){return `<div class="action-editor-row" data-action-index="${index}" data-step-index="${action.stepIndex}"><div class="action-editor-toolbar">${evidenceStrip(action)}<label class="action-field">出块位置<select onchange="updateAction(${index},'sourceSlot',this.value)"><option value="-1" ${+action.sourceSlot<0?'selected':''}>待确认</option>${['左侧','中间','右侧'].map((name,slot)=>`<option value="${slot}" ${slot===+action.sourceSlot?'selected':''}>${name}</option>`).join('')}</select></label><div class="action-field">方块形状${shapeGrid(action,index)}</div><label class="action-field">棋盘落点<div class="split"><input type="number" min="0" max="${state.rows-1}" value="${action.target.row}" onchange="updateAction(${index},'targetRow',this.value)"><input type="number" min="0" max="${state.cols-1}" value="${action.target.col}" onchange="updateAction(${index},'targetCol',this.value)"></div><span>行 / 列，从0开始</span></label><label class="action-field">消除检测<select onchange="updateAction(${index},'clearState',this.value)"><option value="unknown" ${action.clearState==='unknown'?'selected':''}>待确认</option><option value="on" ${action.clearState==='on'?'selected':''}>启用</option><option value="off" ${action.clearState==='off'?'selected':''}>禁用</option></select></label>${candidateSelectHtml(action,index)}</div>${fullPlacementBoardHtml(action,index,state)}</div>`;}
+  function actionReviewStatus(action){if(+action.sourceSlot<0)return {text:'核对出块位置',title:'未能唯一确定使用了左侧、中间还是右侧出块'};if(action.clearState==='unknown')return {text:'核对消除状态',title:'缺少足够的后续稳定棋盘，无法确定本步是否启用消除'};if(action.confidence!=='verified')return {text:'核对形状/落点',title:'方块形状和落点来自棋盘前后差异推断，尚未通过出块与规则精确匹配'};return {text:'规则已验证',title:'出块、形状、落点和消除状态已通过规则模拟'};}
+  function actionSummaryHtml(action,index,state,active){const conflicts=state.overlaps.length+state.outOfBounds.length,label=`${active?'收起':'展开'}步骤 ${action.stepIndex} 棋盘`,review=actionReviewStatus(action);return `<div class="action-summary-row ${active?'active':''}" data-summary-step="${action.stepIndex}"><strong>步骤 ${action.stepIndex}</strong><span class="summary-detail">${['左侧','中间','右侧'][action.sourceSlot]||'槽位待确认'} · ${action.shape.length}格 · 落点(${action.target.row},${action.target.col}) · 消除${action.clearState==='on'?'开':action.clearState==='off'?'关':'待确认'}</span><span class="${conflicts?'placement-error':'placement-ok'}">${conflicts?`${conflicts}个冲突`:'合法'}</span><span class="tag ${action.requiresConfirmation?'gold':''}" title="${review.title}">${review.text}</span><div class="step-actions"><button type="button" class="step-delete" onclick="deleteActionStep(${index})" aria-label="删除步骤 ${action.stepIndex}" title="删除步骤 ${action.stepIndex}"><i data-lucide="trash-2"></i></button><button type="button" class="step-toggle" onclick="toggleActionEditor(${index})" aria-expanded="${active}" aria-label="${label}" title="${label}"><i data-lucide="${active?'chevron-down':'chevron-right'}"></i></button></div></div>`;}
+  function renderCompactActionReview(){recomputeActionBoards();if(activeActionEditor>=0&&actionDrafts[activeActionEditor]?.deleted)activeActionEditor=-1;const visibleEntries=actionDrafts.map((action,index)=>({action,index})).filter(entry=>!entry.action.deleted);let hasConflict=false;const states=new Map;for(const {action,index} of visibleEntries){const state=actionPlacementState(action);states.set(index,state);hasConflict ||= state.overlaps.length>0||state.outOfBounds.length>0;}const unknown=visibleEntries.some(({action})=>action.clearState==='unknown'),unknownSlot=visibleEntries.some(({action})=>+action.sourceSlot<0),emptyShape=visibleEntries.some(({action})=>!action.shape.length);$('analysisResult').innerHTML=`<div class="note">点击步骤右侧箭头展开或收起棋盘。灰色为原棋盘，绿色为本次放置，红色为重叠，黄色边框为完整行列。</div><div class="action-review">${visibleEntries.map(({action,index})=>{const state=states.get(index),active=index===activeActionEditor;return actionSummaryHtml(action,index,state,active)+(active?compactActionEditorHtml(action,index,state):'');}).join('')}</div><div class="review-actions"><span class="status">${hasConflict?'存在重叠或越界':unknown?'存在消除状态待确认':unknownSlot?'存在出块槽位待确认':emptyShape?'存在空方块形状':'全部步骤可提交规则校验'}</span><button class="primary" id="confirmActionsBtn" ${(hasConflict||unknown||unknownSlot||emptyShape)?'disabled':''}>确认动作脚本</button></div>`;const confirm=$('confirmActionsBtn');if(confirm)confirm.onclick=confirmActions;renderSourceCalibration();renderVersionPicker();}
+  const coreCompactActionReview=renderCompactActionReview;
+  renderCompactActionReview=()=>{coreCompactActionReview();const notice=deletionNoticeHtml();if(notice)$('analysisResult').insertAdjacentHTML('afterbegin',notice);refreshIcons();};
+  renderActionReview=renderCompactActionReview;
+  loadVideoJobFromQuery();
+  loadTruthProgress();
+  </script>
+  <script src="vendor/videojs/video.min.js"></script>
+  <script src="vendor/vis-timeline/vis-timeline-graph2d.min.js"></script>
+  <script src="vendor/cropperjs/cropper.min.js"></script>
+<script src="annotation-studio.js?v=20260721-20"></script>
+<script>
+  (() => {
+    const openAnnotation = () => {
+      if (rebuildJob?.analysis?.reviewActions || rebuildJob?.analysis?.timeline) {
+        $('videoDialog').showModal();
+        setAnnotationStage('workbench');
+        renderAnnotationTaskSummary();
+        if (actionDrafts.length) renderActionReview();
+        return;
+      }
+      resetAnnotationTask();
+      $('videoDialog').showModal();
+    };
+    $('videoRebuildBtn').onclick = openAnnotation;
+    $('analyzeVideoBtn').onclick = window.runVideoAnnotationAnalyze;
+    $('closeVideoDialog').onclick = () => $('videoDialog').close();
+  })();
+</script>
+</body>
+</html>

@@ -1,0 +1,40 @@
+# Python/runtime caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Local service state
+bridge.log
+bridge-error.log
+analysis-cache-index.json
+
+# Generated videos, tasks, datasets and calibration captures
+变体视频/
+视频重建任务/
+编辑器任务/
+数据集/
+测试素材/
+校准/
+改造客户端/
+客户端改造分析/
+
+# Benchmark and diagnostics output
+benchmark*/
+dev*_*/
+diagnostics/
+测试报告/
+diag_*.jpg
+diag-*.jpg
+layout-review.png
+diagnose_analyze_hang_trace.txt
+*_report.json
+ab-*.json
+reverse-clear-result.json
+benchmark_no_coalesce_result.json
+
+# Local editor/export artifacts
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.webm

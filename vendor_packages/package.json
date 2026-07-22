@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "bootstrap": "^5.3.8",
+    "cropperjs": "1.6.2",
+    "video.js": "^8.23.9",
+    "vis-timeline": "^8.5.1"
+  }
+}
