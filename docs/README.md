@@ -4,6 +4,7 @@
 
 - [视频动作识别优化实施计划](视频动作识别优化实施计划.md) - 识别瓶颈、优化方向和阶段性实施计划。
 - [验收标准](验收标准.md) - 视频变体重建的验收规则和质量门槛。
+- [常规彩色方块识别优化实验记录](recognition/optimization-experiments.md) - 常规彩色路径的 baseline、单项 A/B 和组合实验记录。
 
 ## Suggested Documentation Structure
 
