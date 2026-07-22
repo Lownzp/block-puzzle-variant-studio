@@ -756,6 +756,82 @@ def _difference(previous, current):
     return added, removed
 
 
+def _nearest_cell_value(samples, sample_index, row, col):
+    for offset in range(0, max(sample_index + 1, len(samples) - sample_index)):
+        for candidate_index in (sample_index - offset, sample_index + offset):
+            if 0 <= candidate_index < len(samples):
+                value = samples[candidate_index]["board"][row][col]
+                if value is not None:
+                    return value
+    return 0
+
+
+def _apply_cell_temporal_voting(samples, rows, cols, radius=2, minimum_votes=3):
+    """Suppress short-lived per-cell flicker before stable-state extraction."""
+    if len(samples) < minimum_votes:
+        return {"changedCells": 0, "changedFrames": 0, "windowRadius": radius}
+    original = [[list(row) for row in sample["board"]] for sample in samples]
+    changed_cells = 0
+    changed_frames = set()
+    for index, sample in enumerate(samples):
+        start = max(0, index - radius)
+        end = min(len(samples), index + radius + 1)
+        window = original[start:end]
+        updated = [list(row) for row in sample["board"]]
+        frame_changed = False
+        for row in range(rows):
+            for col in range(cols):
+                occupied_votes = sum(board[row][col] is not None for board in window)
+                empty_votes = len(window) - occupied_votes
+                current_occupied = original[index][row][col] is not None
+                if current_occupied and empty_votes >= minimum_votes and empty_votes > occupied_votes:
+                    updated[row][col] = None
+                elif (
+                    not current_occupied
+                    and occupied_votes >= minimum_votes
+                    and occupied_votes > empty_votes
+                ):
+                    updated[row][col] = _nearest_cell_value(samples, index, row, col)
+                else:
+                    continue
+                changed_cells += 1
+                frame_changed = True
+        if frame_changed:
+            sample["board"] = updated
+            changed_frames.add(index)
+    return {
+        "changedCells": changed_cells,
+        "changedFrames": len(changed_frames),
+        "windowRadius": radius,
+        "minimumVotes": minimum_votes,
+    }
+
+
+def _sample_cache_summary(samples, rows, cols):
+    summary = []
+    previous = None
+    for sample in samples:
+        occupied = sum(sample["board"][row][col] is not None for row in range(rows) for col in range(cols))
+        motion = sample.get("boardMotion") or []
+        motion_score = (
+            sum(sum(float(cell) for cell in row) for row in motion) / max(1, rows * cols)
+            if motion
+            else 0.0
+        )
+        signature = _occupancy(sample["board"])
+        changed = sum(a != b for a, b in zip(previous, signature)) if previous is not None else 0
+        previous = signature
+        summary.append({
+            "frameIndex": sample["frameIndex"],
+            "time": sample["time"],
+            "occupied": occupied,
+            "changedCells": changed,
+            "gridAlignment": round(float(sample.get("gridAlignment", 0.0)), 4),
+            "motion": round(motion_score, 4),
+        })
+    return summary
+
+
 def _group_layout_signature(groups):
     return tuple(
         None
@@ -2707,6 +2783,38 @@ def _filter_color_clear_cooldown_fragments(events, cooldown=0.42):
     return filtered, discarded
 
 
+def _apply_fsm_event_constraints(events):
+    """Reject low-evidence fragments that cannot close a source-slot lifecycle."""
+    filtered = []
+    discarded = []
+    for event in events:
+        reasons = set(event.get("candidateReasons") or [])
+        source_slot = int(event.get("sourceSlot", -1))
+        shape_size = int((event.get("group") or {}).get("cellCount") or len(event.get("placedCells") or []))
+        low_evidence_unknown_slot = (
+            source_slot < 0
+            and event.get("confidence") != "verified"
+            and shape_size <= 4
+            and (
+                "short_action_fragments_merged" in reasons
+                or "pure_addition" in reasons
+                or "bottom_slot_not_unique" in reasons
+            )
+        )
+        if low_evidence_unknown_slot:
+            discarded.append({
+                "stepIndex": event.get("stepIndex"),
+                "time": event.get("time"),
+                "reason": "fsm_unknown_slot_fragment",
+                "shapeSize": shape_size,
+            })
+            continue
+        filtered.append(event)
+    for step_index, event in enumerate(filtered, 1):
+        event["stepIndex"] = step_index
+    return filtered, discarded
+
+
 def build_timeline(
     video_path: Path,
     board: tuple[int, int, int, int],
@@ -2802,6 +2910,20 @@ def build_timeline(
     # sampled frames can be copied into the serializable timeline payload.
     for sample in samples:
         sample.pop("repeatedBoardEvidence", None)
+    cell_temporal_voting_diagnostics = None
+    if color_profile_enabled and experiment_flags.is_enabled("cell_temporal_voting"):
+        cell_temporal_voting_diagnostics = _apply_cell_temporal_voting(
+            samples,
+            rows,
+            cols,
+            radius=2,
+            minimum_votes=3,
+        )
+    temporal_candidate_cache = (
+        _sample_cache_summary(samples, rows, cols)
+        if experiment_flags.is_enabled("temporal_candidate_cache")
+        else None
+    )
 
     # Collapse equal occupancy frames into runs and retain states visible for
     # at least 0.13 seconds. Shorter runs are placement/clear animation noise.
@@ -3163,6 +3285,9 @@ def build_timeline(
     if recognition_strategy in {"legacy", "color_block_v1"}:
         events = _coalesce_action_fragments(events, stable_states, rows, cols)
     after_fragment_coalesce_count = len(events)
+    fsm_discarded_events = []
+    if color_profile_enabled and experiment_flags.is_enabled("fsm_event_constraints"):
+        events, fsm_discarded_events = _apply_fsm_event_constraints(events)
 
     states_by_index = {state["stateIndex"]: state for state in stable_states}
     if recognition_strategy == "color_block_v1":
@@ -3832,7 +3957,11 @@ def build_timeline(
             "afterTailFilterCount": after_tail_filter_count,
             "afterDragCollapseCount": after_drag_collapse_count,
             "afterFragmentCoalesceCount": after_fragment_coalesce_count,
+            "fsmEventConstraintDiscardCount": len(fsm_discarded_events),
+            "fsmEventConstraints": fsm_discarded_events,
             "colorCooldownFragmentCount": len(color_cooldown_fragments),
+            "cellTemporalVoting": cell_temporal_voting_diagnostics,
+            "temporalCandidateCache": temporal_candidate_cache,
             "cancelledSourceSteps": sorted({
                 step
                 for interaction in cancelled_drags
