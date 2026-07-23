@@ -204,6 +204,41 @@ def align(predicted: list[dict[str, Any]], truth: list[dict[str, Any]]) -> list[
     return list(reversed(pairs))
 
 
+def within_truth_window(pred: dict[str, Any], truth: dict[str, Any], source_fps: float) -> bool:
+    """Whether a prediction lands inside its paired truth action window."""
+    low, high = truth_action_window(truth, source_fps)
+    return low <= action_time(pred) <= high
+
+
+def detection_aligned(
+    matched: list[tuple[dict[str, Any], dict[str, Any]]], source_fps: float
+) -> list[tuple[dict[str, Any], dict[str, Any]]]:
+    """Keep only pairs whose timing confirms a real match, not alignment drift.
+
+    Recognition accuracy over this subset isolates true field errors from the
+    shape/slot noise that missed detections inject through sequence re-pairing.
+    """
+    return [
+        (pred, truth)
+        for pred, truth in matched
+        if within_truth_window(pred, truth, source_fps)
+    ]
+
+
+def action_count_exact(missed: int, false_positive: int) -> float:
+    """1.0 only when detection neither dropped nor invented an action."""
+    return 1.0 if missed == 0 and false_positive == 0 else 0.0
+
+
+def scene_label(truth_doc: dict[str, Any]) -> str:
+    """Scene tag for per-scenario reporting; 'unlabeled' until truth carries one."""
+    for key in ("scene", "scenario", "category", "family"):
+        value = truth_doc.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return "unlabeled"
+
+
 def evaluate_task(task: Path, predicted_override: list[dict[str, Any]] | None = None) -> dict[str, Any]:
     truth_doc = load_json(task / "确定性回放真值.json")
     draft_doc = initial_draft(task)
@@ -228,6 +263,11 @@ def evaluate_task(task: Path, predicted_override: list[dict[str, Any]] | None = 
     legal_results = [legal_placement(a, rows, cols) for a in predicted]
     final_truth = board_signature(truth[-1].get("expectedBoardAfterResolution")) if truth else ()
     final_pred = board_signature(predicted[-1].get("afterBoard")) if predicted else ()
+    aligned = detection_aligned(matched, source_fps)
+
+    def accuracy_on(pairs, check):
+        return round(sum(check(a, b) for a, b in pairs) / max(1, len(pairs)), 4)
+
     return {
         "id": next(part for part in task.name.split("_") if part.startswith("DEV-")),
         "task": task.name,
@@ -243,6 +283,14 @@ def evaluate_task(task: Path, predicted_override: list[dict[str, Any]] | None = 
         "targetAccuracy": accuracy(lambda a, b: a.get("target") == b.get("target")),
         "clearAccuracy": accuracy(lambda a, b: clear_enabled(a) == clear_enabled(b, truth=True)),
         "semanticActionAccuracy": round(sum(semantic_correct) / max(1, len(matched)), 4),
+        "scene": scene_label(truth_doc),
+        "actionCountExact": action_count_exact(missed, false_positive),
+        "matchedAligned": len(aligned),
+        "slotAccuracyAligned": accuracy_on(aligned, lambda a, b: int(a.get("sourceSlot", -1)) == int(b.get("sourceSlot", -2))),
+        "shapeAccuracyAligned": accuracy_on(aligned, lambda a, b: shape_signature(a) == shape_signature(b, truth=True)),
+        "targetAccuracyAligned": accuracy_on(aligned, lambda a, b: a.get("target") == b.get("target")),
+        "clearAccuracyAligned": accuracy_on(aligned, lambda a, b: clear_enabled(a) == clear_enabled(b, truth=True)),
+        "semanticActionAccuracyAligned": accuracy_on(aligned, semantic_action_correct),
         "stateEquivalentRate": round(sum(state_equivalent_results) / max(1, len(matched)), 4),
         "withinActionWindow": round(sum(within_action_window) / max(1, len(matched)), 4),
         "legalMoveRate": round(sum(legal_results) / max(1, len(predicted)), 4),
@@ -250,6 +298,70 @@ def evaluate_task(task: Path, predicted_override: list[dict[str, Any]] | None = 
         "timeMae": round(sum(time_errors) / max(1, len(time_errors)), 4),
         "withinTwoFrames": round(sum(error <= 2 / source_fps for error in time_errors) / max(1, len(time_errors)), 4),
     }
+
+
+_COUNT_KEYS = ("predicted", "truth", "matched", "falsePositive", "missed", "matchedAligned")
+_MATCHED_WEIGHTED = (
+    "slotAccuracy",
+    "shapeAccuracy",
+    "targetAccuracy",
+    "clearAccuracy",
+    "semanticActionAccuracy",
+    "stateEquivalentRate",
+    "withinActionWindow",
+    "timeMae",
+    "withinTwoFrames",
+)
+_ALIGNED_WEIGHTED = (
+    "slotAccuracyAligned",
+    "shapeAccuracyAligned",
+    "targetAccuracyAligned",
+    "clearAccuracyAligned",
+    "semanticActionAccuracyAligned",
+)
+
+
+def aggregate_totals(tasks: list[dict[str, Any]]) -> dict[str, Any]:
+    """Roll task metrics into totals, weighting recognition rates by sample size.
+
+    Matched-weighted rates keep the historical (detection-mixed) view; the
+    aligned rates are weighted by the detection-aligned subset so recognition
+    quality can be read without missed-detection re-pairing noise.
+    """
+    totals = {key: sum(item.get(key, 0) for item in tasks) for key in _COUNT_KEYS}
+    totals["precision"] = round(totals["matched"] / max(1, totals["predicted"]), 4)
+    totals["recall"] = round(totals["matched"] / max(1, totals["truth"]), 4)
+    for key in _MATCHED_WEIGHTED:
+        totals[key] = round(
+            sum(item.get(key, 0) * item.get("matched", 0) for item in tasks) / max(1, totals["matched"]),
+            4,
+        )
+    for key in _ALIGNED_WEIGHTED:
+        totals[key] = round(
+            sum(item.get(key, 0) * item.get("matchedAligned", 0) for item in tasks) / max(1, totals["matchedAligned"]),
+            4,
+        )
+    totals["legalMoveRate"] = round(
+        sum(item.get("legalMoveRate", 0) * item.get("predicted", 0) for item in tasks) / max(1, totals["predicted"]),
+        4,
+    )
+    totals["finalBoardAccuracy"] = round(
+        sum(item.get("finalBoardAccuracy", 0) for item in tasks) / max(1, len(tasks)),
+        4,
+    )
+    totals["actionCountExactRate"] = round(
+        sum(item.get("actionCountExact", 0) for item in tasks) / max(1, len(tasks)),
+        4,
+    )
+    return totals
+
+
+def group_by_scene(tasks: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    """Per-scene totals so recording/fast-paced/combo failures are not masked."""
+    groups: dict[str, list[dict[str, Any]]] = {}
+    for item in tasks:
+        groups.setdefault(item.get("scene", "unlabeled"), []).append(item)
+    return {scene: aggregate_totals(group) for scene, group in sorted(groups.items())}
 
 
 def build_report(prediction_dir: Path | None = None) -> dict[str, Any]:
@@ -263,30 +375,12 @@ def build_report(prediction_dir: Path | None = None) -> dict[str, Any]:
             # annotator actually sees and confirms.
             override = recognition_actions(override_doc)
         tasks.append(evaluate_task(task, override))
-    totals = {key: sum(item[key] for item in tasks) for key in ("predicted", "truth", "matched", "falsePositive", "missed")}
-    totals["precision"] = round(totals["matched"] / max(1, totals["predicted"]), 4)
-    totals["recall"] = round(totals["matched"] / max(1, totals["truth"]), 4)
-    for key in (
-        "slotAccuracy",
-        "shapeAccuracy",
-        "targetAccuracy",
-        "clearAccuracy",
-        "semanticActionAccuracy",
-        "stateEquivalentRate",
-        "withinActionWindow",
-        "timeMae",
-        "withinTwoFrames",
-    ):
-        totals[key] = round(sum(item[key] * item["matched"] for item in tasks) / max(1, totals["matched"]), 4)
-    totals["legalMoveRate"] = round(
-        sum(item["legalMoveRate"] * item["predicted"] for item in tasks) / max(1, totals["predicted"]),
-        4,
-    )
-    totals["finalBoardAccuracy"] = round(
-        sum(item["finalBoardAccuracy"] for item in tasks) / max(1, len(tasks)),
-        4,
-    )
-    return {"truthCount": len(tasks), "totals": totals, "tasks": tasks}
+    return {
+        "truthCount": len(tasks),
+        "totals": aggregate_totals(tasks),
+        "byScene": group_by_scene(tasks),
+        "tasks": tasks,
+    }
 
 
 def main() -> None:
