@@ -41,6 +41,11 @@ METRIC_KEYS = [
     "shapeAccuracy",
     "targetAccuracy",
     "clearAccuracy",
+    "semanticActionAccuracy",
+    "stateEquivalentRate",
+    "withinActionWindow",
+    "legalMoveRate",
+    "finalBoardAccuracy",
     "timeMae",
     "withinTwoFrames",
 ]
@@ -57,8 +62,26 @@ def report_for(prediction_dir: Path, ids: set[str]) -> dict:
     totals = {key: sum(item[key] for item in tasks) for key in ("predicted", "truth", "matched", "falsePositive", "missed")}
     totals["precision"] = round(totals["matched"] / max(1, totals["predicted"]), 4)
     totals["recall"] = round(totals["matched"] / max(1, totals["truth"]), 4)
-    for key in ("slotAccuracy", "shapeAccuracy", "targetAccuracy", "clearAccuracy", "timeMae", "withinTwoFrames"):
+    for key in (
+        "slotAccuracy",
+        "shapeAccuracy",
+        "targetAccuracy",
+        "clearAccuracy",
+        "semanticActionAccuracy",
+        "stateEquivalentRate",
+        "withinActionWindow",
+        "timeMae",
+        "withinTwoFrames",
+    ):
         totals[key] = round(sum(item[key] * item["matched"] for item in tasks) / max(1, totals["matched"]), 4)
+    totals["legalMoveRate"] = round(
+        sum(item["legalMoveRate"] * item["predicted"] for item in tasks) / max(1, totals["predicted"]),
+        4,
+    )
+    totals["finalBoardAccuracy"] = round(
+        sum(item["finalBoardAccuracy"] for item in tasks) / max(1, len(tasks)),
+        4,
+    )
     return {"truthCount": len(tasks), "totals": totals, "tasks": tasks}
 
 
@@ -74,8 +97,8 @@ def markdown_summary(summary: dict) -> str:
         f"- Date: {summary['createdAt']}",
         f"- Dataset: {', '.join(summary['datasetIds'])}",
         "",
-        "| Experiment | Flags | Precision | Recall | Target | Shape | FP | Missed | Decision |",
-        "|---|---|---:|---:|---:|---:|---:|---:|---|",
+        "| Experiment | Flags | Precision | Recall | Semantic | State Eq | Target | Shape | FP | Missed | Decision |",
+        "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---|",
     ]
     for item in summary["experiments"]:
         totals = item["report"]["totals"]
@@ -83,13 +106,15 @@ def markdown_summary(summary: dict) -> str:
         decision = "baseline" if not item["flags"] else "review"
         lines.append(
             "| {name} | {flags} | {precision} ({pdelta:+.2f}pp) | {recall} ({rdelta:+.2f}pp) | "
-            "{target} | {shape} | {fp} | {missed} | {decision} |".format(
+            "{semantic} | {state_eq} | {target} | {shape} | {fp} | {missed} | {decision} |".format(
                 name=item["name"],
                 flags=flags,
                 precision=percent(totals["precision"]),
                 pdelta=(totals["precision"] - baseline["precision"]) * 100,
                 recall=percent(totals["recall"]),
                 rdelta=(totals["recall"] - baseline["recall"]) * 100,
+                semantic=percent(totals["semanticActionAccuracy"]),
+                state_eq=percent(totals["stateEquivalentRate"]),
                 target=percent(totals["targetAccuracy"]),
                 shape=percent(totals["shapeAccuracy"]),
                 fp=totals["falsePositive"],
