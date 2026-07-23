@@ -452,6 +452,24 @@ def clear_completed_lines(board: list[list[object | None]]) -> list[list[object 
     return result
 
 
+def board_distance(left: list[list[object | None]], right: list[list[object | None]]) -> int:
+    if not left or not right:
+        return 10**6
+    rows = max(len(left), len(right))
+    cols = max(
+        max((len(row) for row in left), default=0),
+        max((len(row) for row in right), default=0),
+    )
+    distance = 0
+    for row in range(rows):
+        for col in range(cols):
+            left_occupied = row < len(left) and col < len(left[row]) and left[row][col] is not None
+            right_occupied = row < len(right) and col < len(right[row]) and right[row][col] is not None
+            if left_occupied != right_occupied:
+                distance += 1
+    return distance
+
+
 def same_occupancy(left: list[list[object | None]], right: list[list[object | None]]) -> bool:
     return board_bits(left) == board_bits(right)
 
@@ -607,6 +625,99 @@ def completed_lines_after_placement(
         if all(row < len(board) and col < len(board[row]) and board[row][col] is not None for row in range(rows))
     ]
     return completed_rows, completed_cols, legal, overlap
+
+
+def replay_action_board(
+    before_board: list[list[object | None]],
+    shape: list[dict],
+    target: dict,
+    rows: int,
+    cols: int,
+    clear_state: str,
+) -> list[list[object | None]] | None:
+    if clear_state not in {"on", "off"}:
+        return None
+    board = copy.deepcopy(before_board or [])
+    if not board:
+        return None
+    hue = next((cell for row in board for cell in row if cell is not None), 1)
+    for row, col in placed_cells_for(shape, target):
+        if row < 0 or row >= rows or col < 0 or col >= cols:
+            return None
+        if row >= len(board) or col >= len(board[row]) or board[row][col] is not None:
+            return None
+        board[row][col] = hue
+    return clear_completed_lines(board) if clear_state == "on" else board
+
+
+def sequence_repair_clear_candidate(
+    event: dict,
+    events: list[dict],
+    event_index: int,
+    states: dict,
+    rows: int,
+    cols: int,
+    clear_state: str,
+    target: dict,
+    component_review: dict,
+) -> dict | None:
+    """Try a single clear-state repair and accept it only when replay improves."""
+    hints = [
+        hint for hint in component_review.get("repairHints", [])
+        if hint.get("component") == "clear" and hint.get("suggestedValue") in {"on", "off"}
+    ]
+    if not hints:
+        return None
+    suggested = hints[0]["suggestedValue"]
+    if suggested == clear_state:
+        return None
+    has_original_clear_evidence = bool(
+        event.get("clearEffectEvidence")
+        or event.get("clearMode") in {"immediate", "deferred", "unknown"}
+    )
+    if clear_state == "off" and suggested == "on" and not has_original_clear_evidence:
+        return None
+    shape = event.get("group", {}).get("shape") or []
+    before_board = event.get("beforeBoard") or []
+    current_state_for_score = clear_state if clear_state in {"on", "off"} else ("off" if suggested == "on" else "on")
+    current_board = replay_action_board(before_board, shape, target, rows, cols, current_state_for_score)
+    repaired_board = replay_action_board(before_board, shape, target, rows, cols, suggested)
+    if current_board is None or repaired_board is None:
+        return None
+
+    references: list[tuple[str, list, float]] = []
+    if event_index + 1 < len(events):
+        next_state = states.get(events[event_index + 1].get("sourceStateIndex"))
+        if next_state and next_state.get("board"):
+            references.append(("nextSourceBoard", next_state["board"], 2.0))
+    target_state = states.get(event.get("targetStateIndex"))
+    if target_state and target_state.get("board"):
+        references.append(("targetStateBoard", target_state["board"], 0.8))
+    if event.get("afterBoard"):
+        references.append(("recognizedAfterBoard", event["afterBoard"], 0.5))
+    if not references:
+        return None
+
+    def weighted_score(board):
+        return round(sum(board_distance(board, ref) * weight for _, ref, weight in references), 4)
+
+    score_before = weighted_score(current_board)
+    score_after = weighted_score(repaired_board)
+    improvement = round(score_before - score_after, 4)
+    min_improvement = max(2.0, len(shape) * 0.35)
+    if improvement < min_improvement:
+        return None
+    return {
+        "applied": True,
+        "component": "clear",
+        "from": clear_state,
+        "to": suggested,
+        "scoreBefore": score_before,
+        "scoreAfter": score_after,
+        "improvement": improvement,
+        "references": [name for name, _, _ in references],
+        "reason": hints[0].get("reason"),
+    }
 
 
 def action_component_confidence(event: dict, states: dict, rows: int, cols: int, clear_state: str, target: dict) -> dict:
@@ -804,6 +915,10 @@ def build_action_review(timeline: dict) -> list[dict]:
     states = {state["stateIndex"]: state for state in timeline.get("stableStates", [])}
     rows = int((timeline.get("grid") or {}).get("rows") or 0)
     cols = int((timeline.get("grid") or {}).get("cols") or 0)
+    enabled_experiment_flags = set(
+        ((timeline.get("experimentFlags") or {}).get("enabled") or [])
+    )
+    sequence_repair_clear_enabled = "sequence_repair_clear_v1" in enabled_experiment_flags
     preset_breaks = preset_break_steps(timeline)
     effect_driven = timeline.get("recognitionStrategy") == "reverse_clear_v1"
     review = []
@@ -888,6 +1003,34 @@ def build_action_review(timeline: dict) -> list[dict]:
             clear_state,
             target,
         )
+        auto_repair = None
+        if sequence_repair_clear_enabled:
+            auto_repair = sequence_repair_clear_candidate(
+                event,
+                events,
+                index,
+                states,
+                rows,
+                cols,
+                clear_state,
+                target,
+                component_review,
+            )
+            if auto_repair:
+                clear_state = auto_repair["to"]
+                clear_evidence = (
+                    f"自动修复：clear 从 {auto_repair['from']} 调整为 {auto_repair['to']}，"
+                    f"replay 分数 {auto_repair['scoreBefore']} -> {auto_repair['scoreAfter']}"
+                )
+                component_review = action_component_confidence(
+                    event,
+                    states,
+                    rows,
+                    cols,
+                    clear_state,
+                    target,
+                )
+                component_review["autoRepair"] = auto_repair
         review.append(
             {
                 "stepIndex": event["stepIndex"],

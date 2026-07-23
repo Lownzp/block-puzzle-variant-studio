@@ -194,3 +194,40 @@ python scripts/run_recognition_experiments.py benchmark_experiments/color_block_
 - 当前稳定态评分阈值会把真实短动作一起过滤掉，不能进入默认路径。
 - 单帧阴影 refine 在 DEV-004/DEV-008 上没有触发有效差异，说明这两个样本里的主问题不是单帧 `_cell_shadow_like` 阈值，而是动作候选和放置后状态解释。
 - 后续优化方向应从“稳定态硬过滤”改为“候选保留 + 质量打分 + 人工界面展示分歧”，避免召回率继续下降。
+
+### EXP-20260723-01: clear 序列修复最小闭环
+
+- Commit: 本提交
+- 测试集: DEV-004、DEV-008
+- 启用开关: `sequence_repair_clear_v1`
+- 对照基线: `benchmark_experiments/color_probe_repair_clear_guarded_20260723/summary.md`
+- 是否进入默认路径: 否。当前保护版不改变结果；未保护版会误修 DEV-004 的 clear。
+
+| 指标 | baseline | sequence_repair_clear_v1 | delta |
+|---|---:|---:|---:|
+| predicted | 45 | 45 | 0 |
+| truth | 52 | 52 | 0 |
+| matched | 45 | 45 | 0 |
+| false positive | 0 | 0 | 0 |
+| missed | 7 | 7 | 0 |
+| precision | 100.00% | 100.00% | +0.00pp |
+| recall | 86.54% | 86.54% | +0.00pp |
+| semanticActionAccuracy | 77.78% | 77.78% | +0.00pp |
+| stateEquivalentRate | 86.67% | 86.67% | +0.00pp |
+| shapeAccuracy | 86.67% | 86.67% | +0.00pp |
+| targetAccuracy | 95.56% | 95.56% | +0.00pp |
+
+变好样本：
+
+- 无。保护版在 DEV-004、DEV-008 上没有触发自动修复。
+
+变差样本：
+
+- 保护版无变差。
+- 未保护试跑中，DEV-008 第 3 步 clear 可被修对，但 DEV-004 第 19、25 步会被误修为 clear on，导致 semantic 从 77.78% 降到 73.34%。因此不能只凭“后续棋盘更像”接受 clear 修复。
+
+结论：
+
+- clear 修复必须依赖更强的原始证据，不能只依赖 replay 距离；否则后续动作、候选分段或识别状态偏差会把真实 `off` 误改成 `on`。
+- 当前版本保留为实验开关和基础设施，不进入默认路径。
+- 下一步应优先做 shape/target 候选修复，clear 仅作为候选维度参与全局评分，而不是单独自动改。

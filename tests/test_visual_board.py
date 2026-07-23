@@ -938,16 +938,50 @@ class ConfirmationTests(unittest.TestCase):
         timeline["stableStates"][0]["board"] = before
         timeline["stableStates"][1]["board"] = after
         timeline["events"][0] = event(1, 0, 1, before, after, 0, 2)
-        timeline["events"][0]["clearMode"] = "none"
+        timeline["events"][0]["clearMode"] = "unknown"
 
         action = build_action_review(timeline)[0]
 
         self.assertLess(action["componentConfidence"]["clear"], 0.55)
         self.assertIn("clear", action["suspiciousComponents"])
         self.assertIn(
-            {"component": "clear", "reason": "clear_state_disagrees_with_rule_simulation", "suggestedValue": "on", "completedRows": [0], "completedCols": []},
+            {"component": "clear", "reason": "clear_state_unknown", "suggestedValue": "on"},
             action["repairHints"],
         )
+
+    def test_sequence_repair_clear_requires_experiment_flag(self):
+        timeline = timeline_with_transition("clear_effect")
+        before = board((0, 0), (0, 1))
+        after = board((0, 0), (0, 1), (0, 2))
+        resolved = board()
+        timeline["stableStates"][0]["board"] = before
+        timeline["stableStates"][1]["board"] = after
+        timeline["stableStates"][2]["board"] = resolved
+        timeline["events"][0] = event(1, 0, 1, before, after, 0, 2)
+        timeline["events"][0]["clearMode"] = "unknown"
+
+        action = build_action_review(timeline)[0]
+
+        self.assertEqual(action["clearState"], "unknown")
+        self.assertNotIn("autoRepair", action)
+
+    def test_sequence_repair_clear_applies_when_replay_improves(self):
+        timeline = timeline_with_transition("clear_effect")
+        timeline["experimentFlags"] = {"enabled": ["sequence_repair_clear_v1"]}
+        before = board((0, 0), (0, 1))
+        after = board((0, 0), (0, 1), (0, 2))
+        resolved = board()
+        timeline["stableStates"][0]["board"] = before
+        timeline["stableStates"][1]["board"] = after
+        timeline["stableStates"][2]["board"] = resolved
+        timeline["events"][0] = event(1, 0, 1, before, after, 0, 2)
+        timeline["events"][0]["clearMode"] = "unknown"
+
+        action = build_action_review(timeline)[0]
+
+        self.assertEqual(action["clearState"], "on")
+        self.assertEqual(action["autoRepair"]["component"], "clear")
+        self.assertGreater(action["autoRepair"]["improvement"], 0)
 
     def test_review_marks_out_of_bounds_target_as_low_confidence(self):
         timeline = timeline_with_transition("clear_effect")

@@ -17,6 +17,7 @@ KNOWN_FLAGS = {
     "fsm_event_constraints",
     "cell_temporal_voting",
     "single_frame_shadow_refine",
+    "sequence_repair_clear_v1",
 }
 
 
