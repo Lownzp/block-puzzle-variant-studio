@@ -19,6 +19,7 @@ KNOWN_FLAGS = {
     "single_frame_shadow_refine",
     "sequence_repair_clear_v1",
     "sequence_repair_shape_target_v1",
+    "sequence_candidate_gap_fill_v1",
 }
 
 

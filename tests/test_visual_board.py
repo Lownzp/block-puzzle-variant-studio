@@ -1025,6 +1025,67 @@ class ConfirmationTests(unittest.TestCase):
         self.assertEqual(action["shape"], [{"row": 0, "col": 0}, {"row": 0, "col": 1}])
         self.assertEqual(action["autoRepair"]["component"], "shape")
 
+    def test_gap_fill_candidates_require_experiment_flag(self):
+        before = board()
+        after = board((0, 1), (0, 2))
+        timeline = {
+            "grid": {"rows": 3, "cols": 3},
+            "recognitionStrategy": "color_block_v1",
+            "events": [],
+            "replayCandidates": [],
+            "stableStates": [
+                {"stateIndex": 0, "board": before, "groups": [None, None, None]},
+                {"stateIndex": 1, "board": after, "groups": [None, None, None]},
+            ],
+            "transitions": [{
+                "fromState": 0,
+                "toState": 1,
+                "time": 0.5,
+                "type": "unresolved",
+                "placementStep": None,
+                "addedCells": [{"row": 0, "col": 1}, {"row": 0, "col": 2}],
+                "removedCells": [],
+            }],
+            "validation": {},
+        }
+
+        self.assertEqual(build_action_review(timeline), [])
+
+    def test_gap_fill_candidate_inserts_uncovered_pure_add_transition(self):
+        before = board()
+        after = board((0, 1), (0, 2))
+        timeline = {
+            "grid": {"rows": 3, "cols": 3},
+            "recognitionStrategy": "color_block_v1",
+            "experimentFlags": {"enabled": ["sequence_candidate_gap_fill_v1"]},
+            "events": [],
+            "replayCandidates": [],
+            "stableStates": [
+                {"stateIndex": 0, "board": before, "groups": [None, None, None]},
+                {"stateIndex": 1, "board": after, "groups": [None, None, None]},
+            ],
+            "transitions": [{
+                "fromState": 0,
+                "toState": 1,
+                "time": 0.5,
+                "type": "unresolved",
+                "placementStep": None,
+                "addedCells": [{"row": 0, "col": 1}, {"row": 0, "col": 2}],
+                "removedCells": [],
+            }],
+            "validation": {},
+        }
+
+        review = build_action_review(timeline)
+
+        self.assertEqual(len(review), 1)
+        self.assertTrue(review[0]["autoInserted"])
+        self.assertEqual(review[0]["target"], {"row": 0, "col": 1})
+        self.assertEqual(review[0]["shape"], [{"row": 0, "col": 0}, {"row": 0, "col": 1}])
+        self.assertEqual(review[0]["sourceSlot"], -1)
+        self.assertTrue(review[0]["requiresConfirmation"])
+        self.assertIn("slot", review[0]["suspiciousComponents"])
+
     def test_old_draft_timing_is_recovered_from_evidence_filename(self):
         analysis = {
             "duration": 3.0,

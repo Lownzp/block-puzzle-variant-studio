@@ -267,3 +267,33 @@ python scripts/run_recognition_experiments.py benchmark_experiments/color_block_
 - 仅依赖单步 `repairHints` 中的棋盘差分 shape/target 候选，不能覆盖 DEV-008 的主要错误。
 - 对齐检查显示，DEV-008 多个 shape 错误实际上与动作分段/漏动作/后续配对偏移相关；当前动作的棋盘差分经常是局部状态解释，不等于真实来源槽位 shape。
 - 下一步应转向“候选序列补漏与重评分”：在相邻动作窗口内允许插入/合并候选动作，再用全局 replay 评分，而不是只修单步 shape。
+
+### EXP-20260723-03: 候选序列补漏实验
+
+- Commit: 本提交
+- 测试集: DEV-004、DEV-008
+- 启用开关: `sequence_candidate_gap_fill_v1`
+- 对照基线: `benchmark_experiments/color_probe_gap_fill_20260723/summary.md`
+- 是否进入默认路径: 否。当前策略会增加 false positive，不能自动启用。
+
+| 指标 | baseline | sequence_candidate_gap_fill_v1 | delta |
+|---|---:|---:|---:|
+| precision | 100.00% | 95.74% | -4.26pp |
+| recall | 86.54% | 86.54% | +0.00pp |
+| semanticActionAccuracy | 77.78% | 77.78% | +0.00pp |
+| stateEquivalentRate | 86.67% | 86.67% | +0.00pp |
+| shapeAccuracy | 86.67% | 86.67% | +0.00pp |
+| targetAccuracy | 95.56% | 95.56% | +0.00pp |
+| false positive | 0 | 2 | +2 |
+| missed | 7 | 7 | 0 |
+
+变好样本：
+- 无。DEV-004 无插入候选；DEV-008 插入 2 个候选，但未匹配真值。
+
+变差样本：
+- DEV-008: 额外插入 2 个 `autoInserted` 候选，分别来自未覆盖的纯新增稳定态转换。两者 `sourceSlot = -1`，槽位置信度为 0.2，评测判定为 false positive。
+
+结论：
+- 只看“稳定态之间出现纯新增格子”不足以判断真实动作，容易把局部中间态或非动作状态当成补漏动作。
+- 序列补漏不能先插入动作再期待评测修正；必须先具备来源槽位证据、手部/拖拽轨迹证据或与前后动作一致的全局 replay 改善。
+- 该实验保留为诊断开关，后续方向应改为“候选重评分”: 对低置信动作先生成 slot/shape/target/clear 的局部候选，然后用前后稳定态 replay、槽位消耗一致性和时间证据联合排序；只有高置信候选才自动替换，其余继续进入人工复核。

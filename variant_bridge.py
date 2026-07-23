@@ -830,6 +830,112 @@ def sequence_repair_shape_target_candidate(
     return best
 
 
+def gap_fill_candidate_actions(timeline: dict, states: dict, rows: int, cols: int) -> list[dict]:
+    """Create conservative review-only actions for uncovered pure-addition transitions."""
+    covered_pairs = {
+        (event.get("sourceStateIndex"), event.get("targetStateIndex"))
+        for event in timeline.get("events", [])
+    }
+    candidates = []
+    for transition in timeline.get("transitions", []):
+        if transition.get("placementStep") is not None:
+            continue
+        if transition.get("type") != "unresolved":
+            continue
+        added = transition.get("addedCells") or []
+        removed = transition.get("removedCells") or []
+        if not added or removed or len(added) > 12:
+            continue
+        from_state = states.get(transition.get("fromState"))
+        to_state = states.get(transition.get("toState"))
+        if not from_state or not to_state:
+            continue
+        if (from_state.get("stateIndex"), to_state.get("stateIndex")) in covered_pairs:
+            continue
+        cells = {(int(cell["row"]), int(cell["col"])) for cell in added}
+        normalized = normalized_cells(cells)
+        if not normalized:
+            continue
+        min_row = min(row for row, _ in cells)
+        min_col = min(col for _, col in cells)
+        shape = [{"row": row, "col": col} for row, col in sorted(normalized)]
+        target = {"row": min_row, "col": min_col}
+        completed_rows, completed_cols, legal, overlap = completed_lines_after_placement(
+            from_state.get("board") or [],
+            shape,
+            target,
+            rows,
+            cols,
+        )
+        if not legal or overlap:
+            continue
+        source_slot = -1
+        source_groups = from_state.get("groups") or []
+        shape_sig = shape_cells(shape)
+        slot_matches = [
+            slot for slot, group in enumerate(source_groups)
+            if group and shape_cells(group.get("shape") or []) == shape_sig
+        ]
+        if len(slot_matches) == 1:
+            source_slot = slot_matches[0]
+        clear_state = "on" if (completed_rows or completed_cols) else "off"
+        candidates.append({
+            "stepIndex": 0,
+            "originalStepIndex": 0,
+            "manualAdded": False,
+            "autoInserted": True,
+            "autoRepair": {
+                "applied": True,
+                "component": "sequence",
+                "type": "gap_fill",
+                "reason": "uncovered_pure_addition_transition",
+                "fromState": from_state.get("stateIndex"),
+                "toState": to_state.get("stateIndex"),
+            },
+            "time": round(float(transition.get("time", 0.0) or 0.0), 3),
+            "startTime": round(float(transition.get("time", 0.0) or 0.0), 3),
+            "sourceStateIndex": from_state.get("stateIndex"),
+            "targetStateIndex": to_state.get("stateIndex"),
+            "resetBefore": False,
+            "sourceSlot": source_slot,
+            "target": target,
+            "shape": shape,
+            "beforeBoard": copy.deepcopy(from_state.get("board") or []),
+            "afterBoard": copy.deepcopy(to_state.get("board") or []),
+            "recognizedAfterBoard": copy.deepcopy(to_state.get("board") or []),
+            "clearedRows": completed_rows,
+            "clearedCols": completed_cols,
+            "clearState": clear_state,
+            "clearEvidence": "Auto gap-fill candidate: uncovered pure-add stable-state transition",
+            "clearEffectEvidence": None,
+            "confidence": "candidate",
+            "candidateReasons": ["sequence_gap_fill_uncovered_addition"],
+            "candidateSolutions": [],
+            "candidateCount": 0,
+            "requiresConfirmation": True,
+            "framePath": "",
+            "evidenceFrames": {},
+            "evidenceTimes": {},
+            "timeRanges": {
+                "placed": {
+                    "start": round(float(transition.get("time", 0.0) or 0.0), 3),
+                    "end": round(float(transition.get("time", 0.0) or 0.0), 3),
+                }
+            },
+            "annotationNotes": "Auto gap-fill candidate; source slot needs review",
+            "componentConfidence": {
+                "clear": 0.72,
+                "shape": 0.78,
+                "target": 0.78,
+                "slot": 0.2 if source_slot < 0 else 0.72,
+            },
+            "repairHints": [{"component": "slot", "reason": "source_slot_unknown"}] if source_slot < 0 else [],
+            "suspiciousComponents": ["slot"] if source_slot < 0 else [],
+            "requiresComponentReview": source_slot < 0,
+        })
+    return candidates
+
+
 def action_component_confidence(event: dict, states: dict, rows: int, cols: int, clear_state: str, target: dict) -> dict:
     """Score independently repairable action components without mutating the action."""
     shape = event.get("group", {}).get("shape") or []
@@ -1030,6 +1136,7 @@ def build_action_review(timeline: dict) -> list[dict]:
     )
     sequence_repair_clear_enabled = "sequence_repair_clear_v1" in enabled_experiment_flags
     sequence_repair_shape_target_enabled = "sequence_repair_shape_target_v1" in enabled_experiment_flags
+    sequence_candidate_gap_fill_enabled = "sequence_candidate_gap_fill_v1" in enabled_experiment_flags
     preset_breaks = preset_break_steps(timeline)
     effect_driven = timeline.get("recognitionStrategy") == "reverse_clear_v1"
     review = []
@@ -1211,6 +1318,16 @@ def build_action_review(timeline: dict) -> list[dict]:
                 **component_review,
             }
         )
+    if sequence_candidate_gap_fill_enabled:
+        review.extend(gap_fill_candidate_actions(timeline, states, rows, cols))
+        review.sort(
+            key=lambda action: (
+                float(action.get("time", action.get("startTime", 0.0)) or 0.0),
+                int(action.get("originalStepIndex", action.get("stepIndex", 0)) or 0),
+            )
+        )
+        for step_index, action in enumerate(review, 1):
+            action["stepIndex"] = step_index
     return review
 
 
