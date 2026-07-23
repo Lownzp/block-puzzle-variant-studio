@@ -830,6 +830,326 @@ def sequence_repair_shape_target_candidate(
     return best
 
 
+def sequence_candidate_rerank(
+    event: dict,
+    events: list[dict],
+    event_index: int,
+    states: dict,
+    rows: int,
+    cols: int,
+    clear_state: str,
+    target: dict,
+    component_review: dict,
+) -> dict | None:
+    """Rerank local slot/shape/target candidates using sequence replay evidence."""
+    if clear_state not in {"on", "off"}:
+        return None
+    confidence = component_review.get("componentConfidence") or {}
+    if min(
+        float(confidence.get("slot", 0.0)),
+        float(confidence.get("shape", 0.0)),
+        float(confidence.get("target", 0.0)),
+    ) >= 0.65:
+        return None
+
+    before_board = event.get("beforeBoard") or []
+    if not before_board:
+        return None
+    source_state = states.get(event.get("sourceStateIndex")) or {}
+    source_groups = source_state.get("groups") or []
+    current_slot = int(event.get("sourceSlot", -1))
+    current_shape = [
+        {"row": int(cell.get("row", 0)), "col": int(cell.get("col", 0))}
+        for cell in (event.get("group", {}).get("shape") or [])
+    ]
+    if not current_shape:
+        return None
+
+    references: list[tuple[str, list, float]] = []
+    if event_index + 1 < len(events):
+        next_state = states.get(events[event_index + 1].get("sourceStateIndex"))
+        if next_state and next_state.get("board"):
+            references.append(("nextSourceBoard", next_state["board"], 2.0))
+    target_state = states.get(event.get("targetStateIndex"))
+    if target_state and target_state.get("board"):
+        references.append(("targetStateBoard", target_state["board"], 0.8))
+    if event.get("afterBoard"):
+        references.append(("recognizedAfterBoard", event["afterBoard"], 0.5))
+    if not references:
+        return None
+
+    pickup_slot = int((event.get("sourcePickupEvidence") or {}).get("sourceSlot", -1))
+    added = board_added_cells(before_board, event.get("afterBoard") or [])
+    candidates: dict[tuple, dict] = {}
+
+    def add_candidate(
+        source_slot: int,
+        shape: list[dict],
+        candidate_target: dict,
+        candidate_clear_state: str,
+        origin: str,
+    ) -> None:
+        shape = [
+            {"row": int(cell.get("row", 0)), "col": int(cell.get("col", 0))}
+            for cell in shape
+        ]
+        if not shape or len(shape) > 25:
+            return
+        completed_rows, completed_cols, legal, overlap = completed_lines_after_placement(
+            before_board,
+            shape,
+            candidate_target,
+            rows,
+            cols,
+        )
+        if not legal or overlap:
+            return
+        replayed = replay_action_board(
+            before_board,
+            shape,
+            candidate_target,
+            rows,
+            cols,
+            candidate_clear_state,
+        )
+        if replayed is None:
+            return
+        board_score = sum(
+            board_distance(replayed, reference) * weight
+            for _, reference, weight in references
+        )
+        primary_reference = next(
+            (
+                reference for name, reference, _ in references
+                if name == "nextSourceBoard"
+            ),
+            references[0][1],
+        )
+        primary_distance = board_distance(replayed, primary_reference)
+        placed = placed_cells_for(shape, candidate_target)
+        delta_penalty = 0.0
+        if added:
+            delta_penalty = (
+                len(added - placed) * 0.7
+                + len(placed - added) * 0.35
+            )
+        slot_penalty = 0.0
+        if pickup_slot >= 0 and source_slot != pickup_slot:
+            slot_penalty += 2.5
+        if float(confidence.get("slot", 0.0)) >= 0.68 and current_slot >= 0 and source_slot != current_slot:
+            slot_penalty += 2.0
+        score = round(board_score + delta_penalty + slot_penalty, 4)
+        key = (
+            source_slot,
+            tuple(sorted(shape_cells(shape))),
+            int(candidate_target.get("row", 0)),
+            int(candidate_target.get("col", 0)),
+            candidate_clear_state,
+        )
+        record = {
+            "sourceSlot": source_slot,
+            "shape": shape,
+            "target": {
+                "row": int(candidate_target.get("row", 0)),
+                "col": int(candidate_target.get("col", 0)),
+            },
+            "score": score,
+            "boardScore": round(board_score, 4),
+            "primaryDistance": primary_distance,
+            "deltaPenalty": round(delta_penalty, 4),
+            "slotPenalty": round(slot_penalty, 4),
+            "completedRows": completed_rows,
+            "completedCols": completed_cols,
+            "origin": origin,
+            "clearState": candidate_clear_state,
+        }
+        previous = candidates.get(key)
+        if previous is None or record["score"] < previous["score"]:
+            candidates[key] = record
+
+    add_candidate(current_slot, current_shape, target, clear_state, "current")
+
+    candidate_shapes: list[tuple[int, list[dict], str]] = []
+    for slot, group in enumerate(source_groups):
+        shape = (group or {}).get("shape") or []
+        if shape:
+            candidate_shapes.append((slot, shape, "source_slot"))
+    candidate_shapes.append((current_slot, current_shape, "current_shape"))
+
+    def is_connected_shape(shape: list[dict]) -> bool:
+        cells = normalized_cells(shape_cells(shape))
+        if not cells:
+            return False
+        visited = set()
+        frontier = [next(iter(cells))]
+        while frontier:
+            cell = frontier.pop()
+            if cell in visited:
+                continue
+            visited.add(cell)
+            row, col = cell
+            frontier.extend(
+                neighbor
+                for neighbor in (
+                    (row - 1, col),
+                    (row + 1, col),
+                    (row, col - 1),
+                    (row, col + 1),
+                )
+                if neighbor in cells and neighbor not in visited
+            )
+        return len(visited) == len(cells)
+
+    # Stable slot detection can disappear during effects. Reuse plausible
+    # connected shapes observed elsewhere in the same video as a vocabulary.
+    for other_event in events:
+        catalog_shape = (other_event.get("group") or {}).get("shape") or []
+        if 1 <= len(catalog_shape) <= 12 and is_connected_shape(catalog_shape):
+            candidate_shapes.append((current_slot, catalog_shape, "event_shape_catalog"))
+
+    delta_shape = normalized_cells(added)
+    if delta_shape:
+        delta_shape_list = [{"row": row, "col": col} for row, col in sorted(delta_shape)]
+        matching_slots = [
+            slot for slot, group in enumerate(source_groups)
+            if group and shape_cells(group.get("shape") or []) == delta_shape
+        ]
+        candidate_shapes.append((
+            matching_slots[0] if len(matching_slots) == 1 else current_slot,
+            delta_shape_list,
+            "board_delta",
+        ))
+
+    for source_slot, shape, origin in candidate_shapes:
+        normalized_shape = [
+            {"row": row, "col": col}
+            for row, col in sorted(normalized_cells(shape_cells(shape)))
+        ]
+        if not normalized_shape:
+            continue
+        max_row = max(cell["row"] for cell in normalized_shape)
+        max_col = max(cell["col"] for cell in normalized_shape)
+        for target_row in range(max(0, rows - max_row)):
+            for target_col in range(max(0, cols - max_col)):
+                candidate_target = {"row": target_row, "col": target_col}
+                add_candidate(
+                    source_slot,
+                    normalized_shape,
+                    candidate_target,
+                    clear_state,
+                    origin,
+                )
+                changes_geometry = (
+                    shape_cells(normalized_shape) != shape_cells(current_shape)
+                    or candidate_target != {
+                        "row": int(target.get("row", 0)),
+                        "col": int(target.get("col", 0)),
+                    }
+                )
+                completed_rows, completed_cols, _, _ = completed_lines_after_placement(
+                    before_board,
+                    normalized_shape,
+                    candidate_target,
+                    rows,
+                    cols,
+                )
+                if changes_geometry and (completed_rows or completed_cols):
+                    add_candidate(
+                        source_slot,
+                        normalized_shape,
+                        candidate_target,
+                        "on" if clear_state == "off" else "off",
+                        f"{origin}_joint_clear",
+                    )
+
+    ranked = sorted(
+        candidates.values(),
+        key=lambda item: (
+            item["score"],
+            item["sourceSlot"] != current_slot,
+            item["target"]["row"],
+            item["target"]["col"],
+            item["clearState"],
+        ),
+    )
+    if not ranked:
+        return None
+    current = next((item for item in ranked if item["origin"] == "current"), None)
+    if current is None:
+        return None
+    best = ranked[0]
+    if (
+        best["sourceSlot"] == current_slot
+        and shape_cells(best["shape"]) == shape_cells(current_shape)
+        and best["target"] == {
+            "row": int(target.get("row", 0)),
+            "col": int(target.get("col", 0)),
+        }
+        and best["clearState"] == clear_state
+    ):
+        return None
+
+    improvement = round(current["score"] - best["score"], 4)
+    distinct_second = next(
+        (
+            item for item in ranked[1:]
+            if (
+                item["sourceSlot"],
+                shape_cells(item["shape"]) == shape_cells(best["shape"]),
+                item["target"]["row"],
+                item["target"]["col"],
+                item["clearState"],
+            ) != (
+                best["sourceSlot"],
+                True,
+                best["target"]["row"],
+                best["target"]["col"],
+                best["clearState"],
+            )
+        ),
+        None,
+    )
+    margin = round(
+        (distinct_second["score"] if distinct_second else current["score"]) - best["score"],
+        4,
+    )
+    min_improvement = max(2.0, len(best["shape"]) * 0.45)
+    if improvement < min_improvement or margin < 1.25:
+        return None
+    if best["primaryDistance"] > max(1.0, len(best["shape"]) * 0.25):
+        return None
+
+    return {
+        "applied": True,
+        "component": "sequence_rerank",
+        "from": {
+            "sourceSlot": current_slot,
+            "shape": current_shape,
+            "target": target,
+            "clearState": clear_state,
+        },
+        "to": {
+            "sourceSlot": best["sourceSlot"],
+            "shape": best["shape"],
+            "target": best["target"],
+            "clearState": best["clearState"],
+        },
+        "sourceSlot": best["sourceSlot"],
+        "shape": best["shape"],
+        "target": best["target"],
+        "clearState": best["clearState"],
+        "scoreBefore": current["score"],
+        "scoreAfter": best["score"],
+        "primaryDistance": best["primaryDistance"],
+        "improvement": improvement,
+        "runnerUpMargin": margin,
+        "references": [name for name, _, _ in references],
+        "origin": best["origin"],
+        "candidateCount": len(ranked),
+        "reason": "slot_shape_target_candidate_replay_winner",
+    }
+
+
 def gap_fill_candidate_actions(timeline: dict, states: dict, rows: int, cols: int) -> list[dict]:
     """Create conservative review-only actions for uncovered pure-addition transitions."""
     covered_pairs = {
@@ -1137,6 +1457,7 @@ def build_action_review(timeline: dict) -> list[dict]:
     sequence_repair_clear_enabled = "sequence_repair_clear_v1" in enabled_experiment_flags
     sequence_repair_shape_target_enabled = "sequence_repair_shape_target_v1" in enabled_experiment_flags
     sequence_candidate_gap_fill_enabled = "sequence_candidate_gap_fill_v1" in enabled_experiment_flags
+    sequence_candidate_rerank_enabled = "sequence_candidate_rerank_v1" in enabled_experiment_flags
     preset_breaks = preset_break_steps(timeline)
     effect_driven = timeline.get("recognitionStrategy") == "reverse_clear_v1"
     review = []
@@ -1217,6 +1538,7 @@ def build_action_review(timeline: dict) -> list[dict]:
             {"row": cell["row"], "col": cell["col"]}
             for cell in event["group"]["shape"]
         ]
+        source_slot = int(event.get("sourceSlot", -1))
         component_review = action_component_confidence(
             event,
             states,
@@ -1285,6 +1607,46 @@ def build_action_review(timeline: dict) -> list[dict]:
                     target,
                 )
                 component_review["autoRepair"] = shape_target_repair
+        if sequence_candidate_rerank_enabled:
+            rerank_repair = sequence_candidate_rerank(
+                event,
+                events,
+                index,
+                states,
+                rows,
+                cols,
+                clear_state,
+                target,
+                component_review,
+            )
+            if rerank_repair:
+                source_slot = rerank_repair["sourceSlot"]
+                target = rerank_repair["target"]
+                clear_state = rerank_repair["clearState"]
+                if clear_state != rerank_repair["from"]["clearState"]:
+                    clear_evidence = (
+                        "Joint sequence rerank changed clear state with shape/target; "
+                        f"replay score {rerank_repair['scoreBefore']} -> {rerank_repair['scoreAfter']}"
+                    )
+                review_shape = [
+                    {"row": cell["row"], "col": cell["col"]}
+                    for cell in rerank_repair["shape"]
+                ]
+                event_for_review = copy.deepcopy(event)
+                event_for_review["sourceSlot"] = source_slot
+                event_for_review.setdefault("group", {})["shape"] = [
+                    dict(cell) for cell in review_shape
+                ]
+                event_for_review["target"] = target
+                component_review = action_component_confidence(
+                    event_for_review,
+                    states,
+                    rows,
+                    cols,
+                    clear_state,
+                    target,
+                )
+                component_review["autoRepair"] = rerank_repair
         review.append(
             {
                 "stepIndex": event["stepIndex"],
@@ -1295,7 +1657,7 @@ def build_action_review(timeline: dict) -> list[dict]:
                 "sourceStateIndex": event.get("sourceStateIndex"),
                 "targetStateIndex": event.get("targetStateIndex"),
                 "resetBefore": event["stepIndex"] in preset_breaks,
-                "sourceSlot": event["sourceSlot"],
+                "sourceSlot": source_slot,
                 "target": target,
                 "shape": review_shape,
                 "beforeBoard": event.get("beforeBoard", []),
@@ -1309,7 +1671,7 @@ def build_action_review(timeline: dict) -> list[dict]:
                 "candidateReasons": event.get("candidateReasons", []),
                 "candidateSolutions": event.get("candidateSolutions", []),
                 "candidateCount": len(event.get("candidateSolutions", [])),
-                "requiresConfirmation": event.get("confidence") != "verified" or event.get("sourceSlot", -1) < 0 or clear_state == "unknown",
+                "requiresConfirmation": event.get("confidence") != "verified" or source_slot < 0 or clear_state == "unknown",
                 "framePath": event.get("framePath", ""),
                 "evidenceFrames": event.get("evidenceFrames", {}),
                 "evidenceTimes": event.get("evidenceTimes", {}),

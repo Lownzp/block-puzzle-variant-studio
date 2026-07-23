@@ -1025,6 +1025,89 @@ class ConfirmationTests(unittest.TestCase):
         self.assertEqual(action["shape"], [{"row": 0, "col": 0}, {"row": 0, "col": 1}])
         self.assertEqual(action["autoRepair"]["component"], "shape")
 
+    def test_sequence_candidate_rerank_requires_experiment_flag(self):
+        timeline = timeline_with_transition("clear_effect")
+        before = board()
+        after = board((1, 1), (1, 2))
+        horizontal = {
+            "shape": [{"row": 0, "col": 0}, {"row": 0, "col": 1}],
+            "cellCount": 2,
+        }
+        timeline["recognitionStrategy"] = "color_block_v1"
+        timeline["stableStates"][0].update({
+            "board": before,
+            "groups": [None, None, horizontal],
+        })
+        timeline["stableStates"][1]["board"] = after
+        timeline["stableStates"][2]["board"] = after
+        timeline["events"][0] = event(1, 0, 1, before, after, 0, 0)
+
+        action = build_action_review(timeline)[0]
+
+        self.assertEqual(action["sourceSlot"], 0)
+        self.assertEqual(action["shape"], [{"row": 0, "col": 0}])
+        self.assertEqual(action["target"], {"row": 0, "col": 0})
+        self.assertNotIn("autoRepair", action)
+
+    def test_sequence_candidate_rerank_repairs_slot_shape_and_target(self):
+        timeline = timeline_with_transition("clear_effect")
+        before = board()
+        after = board((1, 1), (1, 2))
+        horizontal = {
+            "shape": [{"row": 0, "col": 0}, {"row": 0, "col": 1}],
+            "cellCount": 2,
+        }
+        timeline["recognitionStrategy"] = "color_block_v1"
+        timeline["experimentFlags"] = {"enabled": ["sequence_candidate_rerank_v1"]}
+        timeline["stableStates"][0].update({
+            "board": before,
+            "groups": [None, None, horizontal],
+        })
+        timeline["stableStates"][1]["board"] = after
+        timeline["stableStates"][2]["board"] = after
+        timeline["events"][0] = event(1, 0, 1, before, after, 0, 0)
+
+        action = build_action_review(timeline)[0]
+
+        self.assertEqual(action["sourceSlot"], 2)
+        self.assertEqual(action["shape"], [{"row": 0, "col": 0}, {"row": 0, "col": 1}])
+        self.assertEqual(action["target"], {"row": 1, "col": 1})
+        self.assertEqual(action["autoRepair"]["component"], "sequence_rerank")
+        self.assertGreater(action["autoRepair"]["improvement"], 0)
+
+    def test_sequence_candidate_rerank_jointly_repairs_shape_and_clear(self):
+        timeline = timeline_with_transition("clear_effect")
+        before = board()
+        malformed_after = board((0, 1), (1, 0), (1, 2), (2, 1))
+        plus_shape = [
+            {"row": 0, "col": 1},
+            {"row": 1, "col": 0},
+            {"row": 1, "col": 1},
+            {"row": 1, "col": 2},
+            {"row": 2, "col": 1},
+        ]
+        timeline["recognitionStrategy"] = "color_block_v1"
+        timeline["experimentFlags"] = {"enabled": ["sequence_candidate_rerank_v1"]}
+        timeline["stableStates"][0]["board"] = before
+        timeline["stableStates"][1]["board"] = malformed_after
+        timeline["stableStates"][2]["board"] = board()
+        timeline["events"][0] = event(1, 0, 1, before, malformed_after, 0, 0)
+        timeline["events"][0]["group"]["shape"] = [
+            {"row": 0, "col": 1},
+            {"row": 1, "col": 0},
+            {"row": 1, "col": 2},
+            {"row": 2, "col": 1},
+        ]
+        timeline["events"][0]["sourceSlot"] = -1
+        timeline["events"][1]["group"]["shape"] = copy.deepcopy(plus_shape)
+
+        action = build_action_review(timeline)[0]
+
+        self.assertEqual(action["shape"], plus_shape)
+        self.assertEqual(action["clearState"], "on")
+        self.assertEqual(action["autoRepair"]["component"], "sequence_rerank")
+        self.assertEqual(action["autoRepair"]["primaryDistance"], 0)
+
     def test_gap_fill_candidates_require_experiment_flag(self):
         before = board()
         after = board((0, 1), (0, 2))

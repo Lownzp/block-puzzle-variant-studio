@@ -297,3 +297,38 @@ python scripts/run_recognition_experiments.py benchmark_experiments/color_block_
 - 只看“稳定态之间出现纯新增格子”不足以判断真实动作，容易把局部中间态或非动作状态当成补漏动作。
 - 序列补漏不能先插入动作再期待评测修正；必须先具备来源槽位证据、手部/拖拽轨迹证据或与前后动作一致的全局 replay 改善。
 - 该实验保留为诊断开关，后续方向应改为“候选重评分”: 对低置信动作先生成 slot/shape/target/clear 的局部候选，然后用前后稳定态 replay、槽位消耗一致性和时间证据联合排序；只有高置信候选才自动替换，其余继续进入人工复核。
+
+### EXP-20260723-04: 候选联合重评分
+
+- Commit: 本提交
+- 测试集: DEV-004、DEV-008
+- 启用开关: `sequence_candidate_rerank_v1`
+- 对照结果: `benchmark_experiments/color_probe_rerank_catalog_post_20260723/summary.md`
+- 是否进入默认路径: 暂不进入。先扩大彩色方块真值集验证泛化性。
+
+| 指标 | baseline | sequence_candidate_rerank_v1 | delta |
+|---|---:|---:|---:|
+| precision | 100.00% | 100.00% | +0.00pp |
+| recall | 86.54% | 86.54% | +0.00pp |
+| semanticActionAccuracy | 77.78% | 80.00% | +2.22pp |
+| stateEquivalentRate | 86.67% | 86.67% | +0.00pp |
+| shapeAccuracy | 86.67% | 88.89% | +2.22pp |
+| targetAccuracy | 95.56% | 95.56% | +0.00pp |
+| clearAccuracy | 84.44% | 86.66% | +2.22pp |
+| false positive | 0 | 0 | 0 |
+| missed | 7 | 7 | 0 |
+
+变好样本：
+
+- DEV-008 第 8 个识别动作由错误的离散 3 格形状、`clear=off`，联合修正为正确的 4 格 T 形、`clear=on`。
+- 来源槽位和落点保持不变；候选回放与下一稳定棋盘完全一致，且领先第二候选 7.65 分。
+
+变差样本：
+
+- 无。DEV-004 未触发自动修正。
+
+结论：
+
+- 这类问题不能独立修 shape 或 clear：错误 shape 会让规则模拟同时误判 clear，必须把 `shape + target + clear` 作为联合候选评分。
+- 当当前稳定态的槽位形状缺失时，可复用同一视频内其他动作识别出的连通方块形状作为候选词表。
+- 自动接受仍要求低置信组件、合法落点、下一稳定棋盘近似或完全一致、总分显著改善以及候选领先幅度，避免重演补漏实验的误报。

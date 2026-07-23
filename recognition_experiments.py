@@ -20,6 +20,7 @@ KNOWN_FLAGS = {
     "sequence_repair_clear_v1",
     "sequence_repair_shape_target_v1",
     "sequence_candidate_gap_fill_v1",
+    "sequence_candidate_rerank_v1",
 }
 
 
