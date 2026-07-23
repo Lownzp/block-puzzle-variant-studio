@@ -919,6 +919,45 @@ class ConfirmationTests(unittest.TestCase):
         self.assertEqual(review[0]["evidenceTimes"]["placed"], 0.3)
         self.assertEqual(review[0]["timeRanges"]["before"]["end"], 0.1)
 
+    def test_review_scores_action_components_independently(self):
+        timeline = timeline_with_transition("clear_effect")
+
+        action = build_action_review(timeline)[0]
+
+        confidence = action["componentConfidence"]
+        self.assertGreaterEqual(confidence["shape"], 0.9)
+        self.assertGreaterEqual(confidence["target"], 0.9)
+        self.assertGreaterEqual(confidence["slot"], 0.7)
+        self.assertGreaterEqual(confidence["clear"], 0.9)
+        self.assertFalse(action["requiresComponentReview"])
+
+    def test_review_suggests_clear_repair_when_rule_simulation_disagrees(self):
+        timeline = timeline_with_transition("clear_effect")
+        before = board((0, 0), (0, 1))
+        after = board((0, 0), (0, 1), (0, 2))
+        timeline["stableStates"][0]["board"] = before
+        timeline["stableStates"][1]["board"] = after
+        timeline["events"][0] = event(1, 0, 1, before, after, 0, 2)
+        timeline["events"][0]["clearMode"] = "none"
+
+        action = build_action_review(timeline)[0]
+
+        self.assertLess(action["componentConfidence"]["clear"], 0.55)
+        self.assertIn("clear", action["suspiciousComponents"])
+        self.assertIn(
+            {"component": "clear", "reason": "clear_state_disagrees_with_rule_simulation", "suggestedValue": "on", "completedRows": [0], "completedCols": []},
+            action["repairHints"],
+        )
+
+    def test_review_marks_out_of_bounds_target_as_low_confidence(self):
+        timeline = timeline_with_transition("clear_effect")
+        timeline["events"][0]["target"] = {"row": 3, "col": 0}
+
+        action = build_action_review(timeline)[0]
+
+        self.assertLess(action["componentConfidence"]["target"], 0.65)
+        self.assertTrue(any(hint["reason"] == "target_realigned_to_observed_board_delta" for hint in action["repairHints"]))
+
     def test_old_draft_timing_is_recovered_from_evidence_filename(self):
         analysis = {
             "duration": 3.0,

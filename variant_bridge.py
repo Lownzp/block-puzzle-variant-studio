@@ -557,6 +557,200 @@ def board_added_cells(before_board: list, after_board: list) -> set[tuple[int, i
     return added
 
 
+def shape_cells(shape: list[dict]) -> set[tuple[int, int]]:
+    return {
+        (int(cell.get("row", 0)), int(cell.get("col", 0)))
+        for cell in (shape or [])
+    }
+
+
+def normalized_cells(cells: set[tuple[int, int]]) -> set[tuple[int, int]]:
+    if not cells:
+        return set()
+    min_row = min(row for row, _ in cells)
+    min_col = min(col for _, col in cells)
+    return {(row - min_row, col - min_col) for row, col in cells}
+
+
+def placed_cells_for(shape: list[dict], target: dict) -> set[tuple[int, int]]:
+    row = int((target or {}).get("row", 0))
+    col = int((target or {}).get("col", 0))
+    return {
+        (row + int(cell.get("row", 0)), col + int(cell.get("col", 0)))
+        for cell in (shape or [])
+    }
+
+
+def completed_lines_after_placement(
+    before_board: list[list[object | None]],
+    shape: list[dict],
+    target: dict,
+    rows: int,
+    cols: int,
+) -> tuple[list[int], list[int], bool, bool]:
+    board = copy.deepcopy(before_board or [[None for _ in range(cols)] for _ in range(rows)])
+    legal = True
+    overlap = False
+    for row, col in placed_cells_for(shape, target):
+        if row < 0 or row >= rows or col < 0 or col >= cols:
+            legal = False
+            continue
+        if board[row][col] is not None:
+            overlap = True
+        board[row][col] = board[row][col] if board[row][col] is not None else 1
+    completed_rows = [
+        row for row in range(rows)
+        if row < len(board) and all(cell is not None for cell in board[row])
+    ]
+    completed_cols = [
+        col for col in range(cols)
+        if all(row < len(board) and col < len(board[row]) and board[row][col] is not None for row in range(rows))
+    ]
+    return completed_rows, completed_cols, legal, overlap
+
+
+def action_component_confidence(event: dict, states: dict, rows: int, cols: int, clear_state: str, target: dict) -> dict:
+    """Score independently repairable action components without mutating the action."""
+    shape = event.get("group", {}).get("shape") or []
+    source_slot = int(event.get("sourceSlot", -1))
+    before_board = event.get("beforeBoard") or []
+    after_board = event.get("afterBoard") or []
+    added = board_added_cells(before_board, after_board)
+    placed = placed_cells_for(shape, target)
+    reasons = set(event.get("candidateReasons") or [])
+    completed_rows, completed_cols, legal, overlap = completed_lines_after_placement(
+        before_board,
+        shape,
+        target,
+        rows,
+        cols,
+    )
+    repair_hints = []
+
+    if not shape:
+        shape_confidence = 0.0
+        repair_hints.append({"component": "shape", "reason": "empty_shape"})
+    else:
+        delta_shape = normalized_cells(added)
+        current_shape = shape_cells(shape)
+        if delta_shape and current_shape == delta_shape:
+            shape_confidence = 0.95
+        elif event.get("confidence") == "verified" and event.get("verification") == "exact_rule_simulation":
+            shape_confidence = 0.88
+        elif delta_shape and len(current_shape & delta_shape) / max(1, len(current_shape | delta_shape)) >= 0.65:
+            shape_confidence = 0.68
+            repair_hints.append({
+                "component": "shape",
+                "reason": "partial_match_to_board_delta",
+                "candidateShape": [{"row": row, "col": col} for row, col in sorted(delta_shape)],
+            })
+        elif delta_shape:
+            shape_confidence = 0.38
+            repair_hints.append({
+                "component": "shape",
+                "reason": "shape_disagrees_with_board_delta",
+                "candidateShape": [{"row": row, "col": col} for row, col in sorted(delta_shape)],
+            })
+        else:
+            shape_confidence = 0.55 if event.get("confidence") == "verified" else 0.42
+
+    if not shape:
+        target_confidence = 0.0
+    elif not legal:
+        target_confidence = 0.05
+        repair_hints.append({
+            "component": "target",
+            "reason": "placement_out_of_bounds",
+            "candidateTarget": realigned_event_target(event, rows, cols),
+        })
+    elif overlap:
+        target_confidence = 0.20
+        repair_hints.append({
+            "component": "target",
+            "reason": "placement_overlaps_existing_board",
+            "candidateTarget": realigned_event_target(event, rows, cols),
+        })
+    elif added:
+        coverage = len(placed & added) / max(1, len(placed))
+        extra = len(placed - added) / max(1, len(placed))
+        target_confidence = max(0.25, min(0.95, 0.25 + coverage * 0.75 - extra * 0.25))
+        if target_confidence < 0.65:
+            repair_hints.append({
+                "component": "target",
+                "reason": "placed_cells_do_not_cover_board_delta",
+                "candidateTarget": realigned_event_target(event, rows, cols),
+            })
+    else:
+        target_confidence = 0.72 if event.get("confidence") == "verified" else 0.50
+    if "target_realigned_to_observed_board_delta" in reasons:
+        target_confidence = min(target_confidence, 0.62)
+        repair_hints.append({
+            "component": "target",
+            "reason": "target_realigned_to_observed_board_delta",
+            "candidateTarget": target,
+        })
+
+    rule_clear = bool(completed_rows or completed_cols)
+    if clear_state == "unknown":
+        clear_confidence = 0.30
+        repair_hints.append({
+            "component": "clear",
+            "reason": "clear_state_unknown",
+            "suggestedValue": "on" if rule_clear else "off",
+        })
+    elif (clear_state == "on") == rule_clear:
+        clear_confidence = 0.94
+    else:
+        clear_confidence = 0.22
+        repair_hints.append({
+            "component": "clear",
+            "reason": "clear_state_disagrees_with_rule_simulation",
+            "suggestedValue": "on" if rule_clear else "off",
+            "completedRows": completed_rows,
+            "completedCols": completed_cols,
+        })
+
+    source_state = states.get(event.get("sourceStateIndex")) or {}
+    source_groups = source_state.get("groups") or []
+    source_group = source_groups[source_slot] if 0 <= source_slot < len(source_groups) else None
+    current_shape = shape_cells(shape)
+    source_shape = shape_cells((source_group or {}).get("shape") or [])
+    if source_slot < 0:
+        slot_confidence = 0.20
+        repair_hints.append({"component": "slot", "reason": "source_slot_unknown"})
+    elif source_shape and source_shape == current_shape:
+        slot_confidence = 0.94
+    elif (
+        "source_slot_from_pickup_activity" in reasons
+        and (event.get("sourcePickupEvidence") or {}).get("sourceSlot") == source_slot
+    ):
+        slot_confidence = 0.68
+    elif not source_groups and event.get("confidence") == "verified":
+        slot_confidence = 0.72
+    elif "source_slot_from_pre_action_shape" in reasons:
+        slot_confidence = 0.72
+    elif source_shape and len(source_shape & current_shape) / max(1, len(source_shape | current_shape)) >= 0.65:
+        slot_confidence = 0.58
+        repair_hints.append({"component": "slot", "reason": "source_slot_shape_partial_match"})
+    else:
+        slot_confidence = 0.40
+        repair_hints.append({"component": "slot", "reason": "source_slot_shape_mismatch"})
+
+    confidence = {
+        "clear": round(clear_confidence, 3),
+        "shape": round(shape_confidence, 3),
+        "target": round(target_confidence, 3),
+        "slot": round(slot_confidence, 3),
+    }
+    suspicious = [name for name, score in confidence.items() if score < 0.55]
+    return {
+        "componentConfidence": confidence,
+        "repairHints": repair_hints,
+        "suspiciousComponents": suspicious,
+        "requiresComponentReview": bool(suspicious),
+    }
+
+
 def realigned_event_target(event: dict, rows: int, cols: int) -> dict:
     shape = event.get("group", {}).get("shape") or []
     current = event.get("target") or {"row": 0, "col": 0}
@@ -686,6 +880,14 @@ def build_action_review(timeline: dict) -> list[dict]:
                 target = realigned_event_target(event, rows, cols)
         if target != event.get("target"):
             event.setdefault("candidateReasons", []).append("target_realigned_to_observed_board_delta")
+        component_review = action_component_confidence(
+            event,
+            states,
+            rows,
+            cols,
+            clear_state,
+            target,
+        )
         review.append(
             {
                 "stepIndex": event["stepIndex"],
@@ -719,6 +921,7 @@ def build_action_review(timeline: dict) -> list[dict]:
                 "evidenceTimes": event.get("evidenceTimes", {}),
                 "timeRanges": event.get("timeRanges", {}),
                 "annotationNotes": event.get("annotationNotes", ""),
+                **component_review,
             }
         )
     return review

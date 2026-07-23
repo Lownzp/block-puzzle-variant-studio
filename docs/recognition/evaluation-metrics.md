@@ -34,3 +34,31 @@
 - 形状或落点不一致时，才使用更高惩罚。
 
 这样可以避免程序选中“同一个动作的不同稳定帧”时，被错误地记为 false positive 或 missed。
+
+## 组件置信度
+
+识别草稿的每个 `reviewActions` 动作会附带 `componentConfidence`，用于定位下一步应优先修复哪个维度：
+
+```json
+{
+  "componentConfidence": {
+    "clear": 0.94,
+    "shape": 0.95,
+    "target": 0.95,
+    "slot": 0.68
+  },
+  "suspiciousComponents": [],
+  "repairHints": []
+}
+```
+
+各组件含义：
+
+| 组件 | 置信来源 |
+|---|---|
+| `clear` | 当前 shape 和 target 放入放置前棋盘后，是否按规则形成完整行列 |
+| `shape` | 当前 shape 与棋盘新增差分、规则闭合证据是否一致 |
+| `target` | 方块是否完整在棋盘内、是否覆盖棋盘新增差分、是否发生过自动 realign |
+| `slot` | 来源槽位是否已知，是否来自槽位 shape 匹配或 pickup activity |
+
+`repairHints` 只给修复建议，不会直接修改识别结果。后续 `sequence_repair_v1` 应遵循最小修改原则：优先修低置信组件，每次只改一个维度，并且只有 replay 分数提升时才接受。
