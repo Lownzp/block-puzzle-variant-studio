@@ -992,6 +992,39 @@ class ConfirmationTests(unittest.TestCase):
         self.assertLess(action["componentConfidence"]["target"], 0.65)
         self.assertTrue(any(hint["reason"] == "target_realigned_to_observed_board_delta" for hint in action["repairHints"]))
 
+    def test_sequence_repair_target_applies_when_replay_improves(self):
+        timeline = timeline_with_transition("clear_effect")
+        timeline["recognitionStrategy"] = "color_block_v1"
+        timeline["experimentFlags"] = {"enabled": ["sequence_repair_shape_target_v1"]}
+        before = board()
+        after = board((0, 1))
+        timeline["stableStates"][0]["board"] = before
+        timeline["stableStates"][1]["board"] = after
+        timeline["stableStates"][2]["board"] = after
+        timeline["events"][0] = event(1, 0, 1, before, after, 0, 0)
+        timeline["events"][0]["target"] = {"row": 0, "col": 0}
+
+        action = build_action_review(timeline)[0]
+
+        self.assertEqual(action["target"], {"row": 0, "col": 1})
+        self.assertEqual(action["autoRepair"]["component"], "target")
+
+    def test_sequence_repair_shape_applies_when_replay_improves(self):
+        timeline = timeline_with_transition("clear_effect")
+        timeline["recognitionStrategy"] = "color_block_v1"
+        timeline["experimentFlags"] = {"enabled": ["sequence_repair_shape_target_v1"]}
+        before = board()
+        after = board((0, 0), (0, 1))
+        timeline["stableStates"][0]["board"] = before
+        timeline["stableStates"][1]["board"] = after
+        timeline["stableStates"][2]["board"] = after
+        timeline["events"][0] = event(1, 0, 1, before, after, 0, 0)
+
+        action = build_action_review(timeline)[0]
+
+        self.assertEqual(action["shape"], [{"row": 0, "col": 0}, {"row": 0, "col": 1}])
+        self.assertEqual(action["autoRepair"]["component"], "shape")
+
     def test_old_draft_timing_is_recovered_from_evidence_filename(self):
         analysis = {
             "duration": 3.0,

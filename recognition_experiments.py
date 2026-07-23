@@ -18,6 +18,7 @@ KNOWN_FLAGS = {
     "cell_temporal_voting",
     "single_frame_shadow_refine",
     "sequence_repair_clear_v1",
+    "sequence_repair_shape_target_v1",
 }
 
 

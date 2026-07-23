@@ -720,6 +720,116 @@ def sequence_repair_clear_candidate(
     }
 
 
+def sequence_repair_shape_target_candidate(
+    event: dict,
+    events: list[dict],
+    event_index: int,
+    states: dict,
+    rows: int,
+    cols: int,
+    clear_state: str,
+    target: dict,
+    component_review: dict,
+) -> dict | None:
+    """Try one low-confidence shape or target repair and accept only replay wins."""
+    if clear_state not in {"on", "off"}:
+        return None
+    current_shape = [
+        {"row": int(cell.get("row", 0)), "col": int(cell.get("col", 0))}
+        for cell in (event.get("group", {}).get("shape") or [])
+    ]
+    if not current_shape:
+        return None
+    before_board = event.get("beforeBoard") or []
+    current_board = replay_action_board(before_board, current_shape, target, rows, cols, clear_state)
+    if current_board is None:
+        return None
+
+    references: list[tuple[str, list, float]] = []
+    if event_index + 1 < len(events):
+        next_state = states.get(events[event_index + 1].get("sourceStateIndex"))
+        if next_state and next_state.get("board"):
+            references.append(("nextSourceBoard", next_state["board"], 2.0))
+    target_state = states.get(event.get("targetStateIndex"))
+    if target_state and target_state.get("board"):
+        references.append(("targetStateBoard", target_state["board"], 0.8))
+    if event.get("afterBoard"):
+        references.append(("recognizedAfterBoard", event["afterBoard"], 0.5))
+    if not references:
+        return None
+
+    def weighted_score(board):
+        return round(sum(board_distance(board, ref) * weight for _, ref, weight in references), 4)
+
+    score_before = weighted_score(current_board)
+    candidates = []
+    for hint in component_review.get("repairHints", []):
+        component = hint.get("component")
+        if component == "target" and isinstance(hint.get("candidateTarget"), dict):
+            candidates.append({
+                "component": "target",
+                "reason": hint.get("reason"),
+                "shape": current_shape,
+                "target": {
+                    "row": int(hint["candidateTarget"].get("row", target.get("row", 0))),
+                    "col": int(hint["candidateTarget"].get("col", target.get("col", 0))),
+                },
+            })
+        elif component == "shape" and isinstance(hint.get("candidateShape"), list):
+            candidate_shape = [
+                {"row": int(cell.get("row", 0)), "col": int(cell.get("col", 0))}
+                for cell in hint["candidateShape"]
+            ]
+            if candidate_shape and len(candidate_shape) <= 25:
+                candidates.append({
+                    "component": "shape",
+                    "reason": hint.get("reason"),
+                    "shape": candidate_shape,
+                    "target": target,
+                })
+    best = None
+    for candidate in candidates:
+        repaired_board = replay_action_board(
+            before_board,
+            candidate["shape"],
+            candidate["target"],
+            rows,
+            cols,
+            clear_state,
+        )
+        if repaired_board is None:
+            continue
+        score_after = weighted_score(repaired_board)
+        improvement = round(score_before - score_after, 4)
+        min_improvement = max(2.0, len(candidate["shape"]) * 0.35)
+        if improvement < min_improvement:
+            continue
+        record = {
+            "applied": True,
+            "component": candidate["component"],
+            "from": (
+                target
+                if candidate["component"] == "target"
+                else current_shape
+            ),
+            "to": (
+                candidate["target"]
+                if candidate["component"] == "target"
+                else candidate["shape"]
+            ),
+            "scoreBefore": score_before,
+            "scoreAfter": score_after,
+            "improvement": improvement,
+            "references": [name for name, _, _ in references],
+            "reason": candidate.get("reason"),
+            "shape": candidate["shape"],
+            "target": candidate["target"],
+        }
+        if best is None or (record["improvement"], -record["scoreAfter"]) > (best["improvement"], -best["scoreAfter"]):
+            best = record
+    return best
+
+
 def action_component_confidence(event: dict, states: dict, rows: int, cols: int, clear_state: str, target: dict) -> dict:
     """Score independently repairable action components without mutating the action."""
     shape = event.get("group", {}).get("shape") or []
@@ -919,6 +1029,7 @@ def build_action_review(timeline: dict) -> list[dict]:
         ((timeline.get("experimentFlags") or {}).get("enabled") or [])
     )
     sequence_repair_clear_enabled = "sequence_repair_clear_v1" in enabled_experiment_flags
+    sequence_repair_shape_target_enabled = "sequence_repair_shape_target_v1" in enabled_experiment_flags
     preset_breaks = preset_break_steps(timeline)
     effect_driven = timeline.get("recognitionStrategy") == "reverse_clear_v1"
     review = []
@@ -995,6 +1106,10 @@ def build_action_review(timeline: dict) -> list[dict]:
                 target = realigned_event_target(event, rows, cols)
         if target != event.get("target"):
             event.setdefault("candidateReasons", []).append("target_realigned_to_observed_board_delta")
+        review_shape = [
+            {"row": cell["row"], "col": cell["col"]}
+            for cell in event["group"]["shape"]
+        ]
         component_review = action_component_confidence(
             event,
             states,
@@ -1031,6 +1146,38 @@ def build_action_review(timeline: dict) -> list[dict]:
                     target,
                 )
                 component_review["autoRepair"] = auto_repair
+        if sequence_repair_shape_target_enabled:
+            shape_target_repair = sequence_repair_shape_target_candidate(
+                event,
+                events,
+                index,
+                states,
+                rows,
+                cols,
+                clear_state,
+                target,
+                component_review,
+            )
+            if shape_target_repair:
+                target = shape_target_repair["target"]
+                review_shape = [
+                    {"row": cell["row"], "col": cell["col"]}
+                    for cell in shape_target_repair["shape"]
+                ]
+                event_for_review = copy.deepcopy(event)
+                event_for_review.setdefault("group", {})["shape"] = [
+                    dict(cell) for cell in shape_target_repair["shape"]
+                ]
+                event_for_review["target"] = target
+                component_review = action_component_confidence(
+                    event_for_review,
+                    states,
+                    rows,
+                    cols,
+                    clear_state,
+                    target,
+                )
+                component_review["autoRepair"] = shape_target_repair
         review.append(
             {
                 "stepIndex": event["stepIndex"],
@@ -1043,10 +1190,7 @@ def build_action_review(timeline: dict) -> list[dict]:
                 "resetBefore": event["stepIndex"] in preset_breaks,
                 "sourceSlot": event["sourceSlot"],
                 "target": target,
-                "shape": [
-                    {"row": cell["row"], "col": cell["col"]}
-                    for cell in event["group"]["shape"]
-                ],
+                "shape": review_shape,
                 "beforeBoard": event.get("beforeBoard", []),
                 "recognizedAfterBoard": event.get("afterBoard", []),
                 "clearedRows": event.get("clearedRows", []),

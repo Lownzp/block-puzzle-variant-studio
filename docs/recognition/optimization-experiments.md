@@ -231,3 +231,39 @@ python scripts/run_recognition_experiments.py benchmark_experiments/color_block_
 - clear 修复必须依赖更强的原始证据，不能只依赖 replay 距离；否则后续动作、候选分段或识别状态偏差会把真实 `off` 误改成 `on`。
 - 当前版本保留为实验开关和基础设施，不进入默认路径。
 - 下一步应优先做 shape/target 候选修复，clear 仅作为候选维度参与全局评分，而不是单独自动改。
+
+### EXP-20260723-02: shape/target 单步候选修复
+
+- Commit: 本提交
+- 测试集: DEV-004、DEV-008
+- 启用开关: `sequence_repair_shape_target_v1`
+- 对照基线: `benchmark_experiments/color_probe_repair_shape_target_20260723/summary.md`
+- 是否进入默认路径: 否。当前版本没有触发有效修复，指标不变。
+
+| 指标 | baseline | sequence_repair_shape_target_v1 | delta |
+|---|---:|---:|---:|
+| predicted | 45 | 45 | 0 |
+| truth | 52 | 52 | 0 |
+| matched | 45 | 45 | 0 |
+| false positive | 0 | 0 | 0 |
+| missed | 7 | 7 | 0 |
+| precision | 100.00% | 100.00% | +0.00pp |
+| recall | 86.54% | 86.54% | +0.00pp |
+| semanticActionAccuracy | 77.78% | 77.78% | +0.00pp |
+| stateEquivalentRate | 86.67% | 86.67% | +0.00pp |
+| shapeAccuracy | 86.67% | 86.67% | +0.00pp |
+| targetAccuracy | 95.56% | 95.56% | +0.00pp |
+
+变好样本：
+
+- 无。
+
+变差样本：
+
+- 无。
+
+结论：
+
+- 仅依赖单步 `repairHints` 中的棋盘差分 shape/target 候选，不能覆盖 DEV-008 的主要错误。
+- 对齐检查显示，DEV-008 多个 shape 错误实际上与动作分段/漏动作/后续配对偏移相关；当前动作的棋盘差分经常是局部状态解释，不等于真实来源槽位 shape。
+- 下一步应转向“候选序列补漏与重评分”：在相邻动作窗口内允许插入/合并候选动作，再用全局 replay 评分，而不是只修单步 shape。
