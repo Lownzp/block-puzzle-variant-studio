@@ -1140,7 +1140,49 @@ def _classify_stable_transition(
     return kind, added, removed
 
 
-def _bottom_groups(frame, board, rows, cols, material_profile="unknown"):
+def _largest_connected_component(cells):
+    """Return the largest 4-connected subset of the given cell coordinates.
+
+    A same-color mis-split can leave stray cells across a gap. Real tray pieces
+    are a single connected shape, so keeping only the largest connected
+    component discards that noise without introducing any pixel threshold.
+    """
+    remaining = set(cells)
+    best = set()
+    while remaining:
+        seed = next(iter(remaining))
+        component = {seed}
+        stack = [seed]
+        while stack:
+            row, col = stack.pop()
+            for neighbor in ((row - 1, col), (row + 1, col), (row, col - 1), (row, col + 1)):
+                if neighbor in remaining and neighbor not in component:
+                    component.add(neighbor)
+                    stack.append(neighbor)
+        remaining -= component
+        if len(component) > len(best):
+            best = component
+    return best
+
+
+def _grid_split_quality(occupied_coverages, empty_coverages):
+    """Self-confidence in a tray grid split, as occupied/empty separation.
+
+    Mean occupied-cell fill minus mean empty-cell fill, clamped to [0, 1]. A
+    high value means the grid divided filled cells from gaps cleanly, so the
+    recovered shape can be trusted; a low value flags an ambiguous split for
+    downstream review instead of silently trusting it.
+    """
+    if not occupied_coverages:
+        return 0.0
+    occupied_mean = sum(occupied_coverages) / len(occupied_coverages)
+    empty_mean = (
+        sum(empty_coverages) / len(empty_coverages) if empty_coverages else 0.0
+    )
+    return round(max(0.0, min(1.0, occupied_mean - empty_mean)), 4)
+
+
+def _bottom_groups(frame, board, rows, cols, material_profile="unknown", refine_grid=False):
     """Read the three fixed bottom slots as normalized cell shapes.
 
     Tray pieces may mix saturated blocks with pale or nearly-white materials.
@@ -1211,6 +1253,7 @@ def _bottom_groups(frame, board, rows, cols, material_profile="unknown"):
         grid_cols, pitch_x = fit_count(right - left, expected_pitch_x)
         grid_rows, pitch_y = fit_count(bottom - top, expected_pitch_y)
         normalized = {}
+        cell_coverages = []
         for row in range(grid_rows):
             for col in range(grid_cols):
                 x0 = int(round(col * (right - left) / grid_cols))
@@ -1218,7 +1261,11 @@ def _bottom_groups(frame, board, rows, cols, material_profile="unknown"):
                 y0 = int(round(row * (bottom - top) / grid_rows))
                 y1 = int(round((row + 1) * (bottom - top) / grid_rows))
                 cell_mask = local_mask[y0:y1, x0:x1]
-                if cell_mask.size == 0 or float(np.mean(cell_mask > 0)) < 0.16:
+                coverage_value = (
+                    float(np.mean(cell_mask > 0)) if cell_mask.size else 0.0
+                )
+                cell_coverages.append((row, col, coverage_value))
+                if coverage_value < 0.16:
                     continue
                 selected = local_hsv[y0:y1, x0:x1][cell_mask > 0]
                 hue = int(round(float(np.median(selected[:, 0])) / 5.0) * 5) % 180 if selected.size else 0
@@ -1226,13 +1273,32 @@ def _bottom_groups(frame, board, rows, cols, material_profile="unknown"):
         if not normalized:
             result.append(None)
             continue
+        refine_score = None
+        refine_connected = None
+        if refine_grid:
+            occupied_coverages = [
+                cov for (row, col, cov) in cell_coverages if (row, col) in normalized
+            ]
+            empty_coverages = [
+                cov for (row, col, cov) in cell_coverages if (row, col) not in normalized
+            ]
+            refine_score = _grid_split_quality(occupied_coverages, empty_coverages)
+            if not _connected_cells(set(normalized)):
+                keep = _largest_connected_component(set(normalized))
+                normalized = {
+                    cell: hue for cell, hue in normalized.items() if cell in keep
+                }
+            refine_connected = _connected_cells(set(normalized))
+            if not normalized:
+                result.append(None)
+                continue
         shape = [
             {"row": row, "col": col, "hue": hue}
             for (row, col), hue in sorted(normalized.items())
         ]
         shape_rows = max(cell["row"] for cell in shape) + 1
         shape_cols = max(cell["col"] for cell in shape) + 1
-        result.append({
+        group = {
             "slot": slot,
             "shape": shape,
             "rows": shape_rows,
@@ -1244,7 +1310,11 @@ def _bottom_groups(frame, board, rows, cols, material_profile="unknown"):
             },
             "recognition": "material_agnostic_component_grid_fit",
             "pitch": {"x": round(pitch_x, 2), "y": round(pitch_y, 2)},
-        })
+        }
+        if refine_grid:
+            group["score"] = refine_score
+            group["connected"] = refine_connected
+        result.append(group)
     return result
 
 
@@ -2913,6 +2983,7 @@ def build_timeline(
                     rows,
                     cols,
                     material_profile if material_profile_enabled else "unknown",
+                    refine_grid=experiment_flags.is_enabled("tray_shape_grid_refine_v1"),
                 ),
                 "slotActivity": _bottom_slot_activity(frame, board),
                 "gridAlignment": _grid_alignment_score(frame, board, rows, cols),

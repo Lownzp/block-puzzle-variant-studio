@@ -21,6 +21,7 @@ KNOWN_FLAGS = {
     "sequence_repair_shape_target_v1",
     "sequence_candidate_gap_fill_v1",
     "sequence_candidate_rerank_v1",
+    "tray_shape_grid_refine_v1",
 }
 
 
