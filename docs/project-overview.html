@@ -231,6 +231,34 @@
     }
     .screen-caption strong { color: var(--ink); }
 
+    .demo-video-layout {
+      display: grid;
+      grid-template-columns: minmax(280px, 390px) 1fr;
+      gap: 64px;
+      align-items: center;
+    }
+    .demo-video-shell {
+      padding: 12px;
+      border-radius: 8px;
+      background: var(--navy);
+      box-shadow: var(--shadow);
+    }
+    .demo-video-shell img {
+      display: block;
+      width: 100%;
+      aspect-ratio: 9 / 16;
+      object-fit: cover;
+      border-radius: 4px;
+      background: #000;
+    }
+    .demo-copy h2 { margin: 10px 0 18px; }
+    .demo-copy > p { max-width: 620px; color: var(--muted); }
+    .demo-points { display: grid; gap: 12px; margin-top: 28px; }
+    .demo-point { display: flex; gap: 11px; align-items: flex-start; }
+    .demo-point svg { width: 19px; height: 19px; flex: 0 0 auto; color: var(--teal); }
+    .demo-point strong { display: block; margin-bottom: 2px; font-size: 14px; }
+    .demo-point span { color: var(--muted); font-size: 12px; }
+
     .metric-strip {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -432,7 +460,8 @@
       .hero { min-height: 680px; background-position: 62% center; }
       .hero::before { width: 76%; }
       .hero-content { width: 66%; }
-      .section-head, .metric-detail, .workbench-shot { grid-template-columns: 1fr; gap: 24px; }
+      .section-head, .metric-detail, .workbench-shot, .demo-video-layout { grid-template-columns: 1fr; gap: 24px; }
+      .demo-video-shell { width: min(100%, 360px); }
       .workflow, .metric-strip { grid-template-columns: 1fr 1fr; }
       .workflow-item:nth-child(2) { border-right: 0; }
       .workflow-item:nth-child(-n+2) { border-bottom: 1px solid var(--line); }
@@ -477,10 +506,10 @@
     <div class="utility-inner">
       <a class="utility-brand" href="#top"><i data-lucide="blocks"></i><span>Block Puzzle Variant Studio</span></a>
       <nav class="utility-nav" aria-label="页面导航">
-        <a href="#workflow">工作流</a>
-        <a href="#baseline">当前基线</a>
-        <a href="#progress">优化进度</a>
-        <a href="#architecture">架构</a>
+        <a href="#workflow">产品流程</a>
+        <a href="#baseline">当前成果</a>
+        <a href="#architecture">项目价值</a>
+        <a href="#progress">下一阶段</a>
         <a class="open-app" href="../index.html"><i data-lucide="arrow-up-right"></i>打开生成器</a>
       </nav>
     </div>
@@ -490,18 +519,18 @@
     <section class="hero" aria-labelledby="hero-title">
       <div class="hero-copy">
         <div class="hero-content">
-          <div class="eyebrow">Local-first video automation</div>
+          <div class="eyebrow">AI-assisted creative production</div>
           <h1 id="hero-title">爆款素材<br>变体生成器</h1>
-          <p class="hero-lead">从游戏录屏中自动识别方块、落点与消除动作，经确定性规则校验后，更换背景、方块素材与画面比例，直接批量生成可复现的变体视频。</p>
+          <p class="hero-lead">上传一条游戏样片，系统自动还原玩法过程，并批量更换背景、方块素材和视频尺寸，快速产出多套可投放的变体视频。</p>
           <div class="hero-actions">
             <a href="../index.html"><i data-lucide="play"></i>进入生成器</a>
-            <a href="#baseline"><i data-lucide="chart-no-axes-combined"></i>查看当前精度</a>
+            <a href="#baseline"><i data-lucide="chart-no-axes-combined"></i>查看项目进展</a>
           </div>
           <div class="hero-facts">
-            <span><i data-lucide="hard-drive"></i>本地运行</span>
-            <span><i data-lucide="shield-check"></i>规则回放校验</span>
-            <span><i data-lucide="film"></i>60fps 输出</span>
-            <span><i data-lucide="test-tube-2"></i>104 项自动测试</span>
+            <span><i data-lucide="hard-drive"></i>本地部署</span>
+            <span><i data-lucide="layers-3"></i>批量生成</span>
+            <span><i data-lucide="ratio"></i>三种画幅</span>
+            <span><i data-lucide="volume-2"></i>保留音画</span>
           </div>
         </div>
       </div>
@@ -510,8 +539,8 @@
     <section class="band" id="workflow">
       <div class="shell">
         <div class="section-head reveal">
-          <div><div class="section-label">Product workflow</div><h2>一条从样本到成片的确定性流水线</h2></div>
-          <p>面向使用者的正式链路不要求核对真值。算法自动理解视频、完成规则一致性校验并驱动 Unity 回放；真值标注属于独立的研发链路，只用于提高后续自动识别精度。</p>
+          <div><div class="section-label">Product workflow</div><h2>一条样片，批量产出多套素材</h2></div>
+          <p>使用者只需要上传视频、选择素材和画幅，系统自动完成识别与生成。算法调试和校准在后台完成，不增加日常制作步骤。</p>
         </div>
         <div class="workflow reveal">
           <article class="workflow-item">
@@ -521,16 +550,16 @@
             <p>支持多视频批量导入，读取棋盘区域、底部托盘和动作时间线。</p>
           </article>
           <article class="workflow-item">
-            <div class="workflow-index">VISION / 02</div>
+            <div class="workflow-index">ANALYZE / 02</div>
             <div class="workflow-icon"><i data-lucide="scan-search"></i></div>
-            <h3>识别动作</h3>
-            <p>拆解来源槽位、方块形状、棋盘落点、消除状态和稳定画面区间。</p>
+            <h3>自动解析</h3>
+            <p>自动还原原视频中的方块、落点、消除和操作节奏。</p>
           </article>
           <article class="workflow-item">
             <div class="workflow-index">VERIFY / 03</div>
             <div class="workflow-icon"><i data-lucide="shield-check"></i></div>
-            <h3>自动校验</h3>
-            <p>用合法落点和棋盘状态复现自动排除不一致候选，不要求用户逐步确认。</p>
+            <h3>质量校验</h3>
+            <p>生成前自动检查动作是否合理，降低异常视频进入输出队列的概率。</p>
           </article>
           <article class="workflow-item">
             <div class="workflow-index">OUTPUT / 04</div>
@@ -541,56 +570,65 @@
         </div>
         <figure class="screen-figure reveal">
           <div class="screen-frame"><img src="assets/overview-home.png" alt="批量变体视频生成主页，包含多视频样本、背景和方块配方、输出尺寸与生成队列。"></div>
-          <figcaption class="screen-caption"><strong>当前主页：上传、识别、配方与生成</strong><span>真值标注和校准属于后台算法工具，已收进右上角系统工具菜单</span></figcaption>
+          <figcaption class="screen-caption"><strong>当前产品主页</strong><span>上传样片、选择配方和画幅，即可批量生成变体视频</span></figcaption>
         </figure>
+      </div>
+    </section>
+
+    <section class="band" id="demo">
+      <div class="shell demo-video-layout">
+        <div class="demo-video-shell reveal">
+          <img src="assets/editor-auto-run.webp" alt="编辑器自动运行并生成变体视频的 8 秒循环演示">
+        </div>
+        <div class="demo-copy reveal">
+          <div class="section-label">Live output</div>
+          <h2>编辑器自动运行效果</h2>
+          <p>系统根据识别出的玩法过程，在编辑器中自动完成落子、消除和节奏回放。这里展示的是实际生成视频的 8 秒片段。</p>
+          <div class="demo-points">
+            <div class="demo-point"><i data-lucide="play-circle"></i><div><strong>动作自动回放</strong><span>无需逐步手工操作编辑器</span></div></div>
+            <div class="demo-point"><i data-lucide="image"></i><div><strong>素材自动替换</strong><span>背景与方块可以按配方批量组合</span></div></div>
+            <div class="demo-point"><i data-lucide="smartphone"></i><div><strong>画幅直接输出</strong><span>支持 9:16、1:1 和 16:9，并保留原始声音</span></div></div>
+          </div>
+        </div>
       </div>
     </section>
 
     <section class="band alt" id="baseline">
       <div class="shell">
         <div class="section-head reveal">
-          <div><div class="section-label">Measured baseline</div><h2>当前识别基线</h2></div>
-          <p>数据来自 2026-07-23 的 8 条常规彩色方块回归集，策略为 <code>color_block_v1</code>。共 167 个真值动作，预测 156 个，匹配 151 个。</p>
+          <div><div class="section-label">Current results</div><h2>核心链路已打通，进入准确率提升阶段</h2></div>
+          <p>当前已完成从视频理解、素材替换到多画幅成片的完整闭环。以下数据来自首批 8 条常规彩色方块样片，共覆盖 167 个游戏动作。</p>
         </div>
         <div class="metric-strip reveal">
           <div class="metric">
-            <div class="metric-name">Precision</div>
+            <div class="metric-name">动作有效率</div>
             <div class="metric-value">96.79%</div>
-            <div class="metric-delta">较 7/22 记录 +1.28pp</div>
+            <div class="metric-delta">识别出的动作大多有效</div>
           </div>
           <div class="metric">
-            <div class="metric-name">Recall</div>
+            <div class="metric-name">动作覆盖率</div>
             <div class="metric-value">90.42%</div>
-            <div class="metric-delta">较 7/22 记录 +1.20pp</div>
+            <div class="metric-delta">仍需继续减少漏识别</div>
           </div>
           <div class="metric">
-            <div class="metric-name">Shape accuracy</div>
+            <div class="metric-name">方块形状识别</div>
             <div class="metric-value">85.43%</div>
-            <div class="metric-delta">较 7/22 记录 +0.87pp</div>
+            <div class="metric-delta">当前重点提升项</div>
           </div>
           <div class="metric">
-            <div class="metric-name">Slot accuracy</div>
+            <div class="metric-name">来源位置识别</div>
             <div class="metric-value">91.39%</div>
-            <div class="metric-delta down">较 7/22 记录 -1.23pp</div>
+            <div class="metric-delta">已具备较好基础</div>
           </div>
         </div>
-        <div class="metric-detail reveal">
-          <div class="score-list" aria-label="识别分项指标">
-            <div class="score-row"><span>目标落点</span><div class="score-track"><div class="score-fill" style="width:93.38%"></div></div><span class="score-value">93.38%</span></div>
-            <div class="score-row"><span>状态等价</span><div class="score-track"><div class="score-fill" style="width:90.73%"></div></div><span class="score-value">90.73%</span></div>
-            <div class="score-row warn"><span>消除状态</span><div class="score-track"><div class="score-fill" style="width:88.74%"></div></div><span class="score-value">88.74%</span></div>
-            <div class="score-row down"><span>方块形状</span><div class="score-track"><div class="score-fill" style="width:85.43%"></div></div><span class="score-value">85.43%</span></div>
-          </div>
-          <aside class="benchmark-note">
-            <h3>如何读这些数字</h3>
-            <p>Precision 较高，说明程序通常不会凭空多造动作；主要损失仍来自漏检和形状识别，当前共有 16 个 missed、5 个 false positive。</p>
-            <p>这套 8 条集合是当前可复现的彩色路径回归基线。计划中的 12 条调优集和 12 条封存集尚未全部接入，不能把“计划规模”写成“已测规模”。</p>
-          </aside>
-        </div>
+        <aside class="benchmark-note reveal">
+          <h3>阶段结论</h3>
+          <p>常规彩色方块场景已经达到可演示水平，主要短板集中在少数快速动作和复杂方块形状。下一阶段将扩大样本范围并集中提升这两类问题。</p>
+        </aside>
       </div>
     </section>
 
-    <section class="band" id="dataset">
+    <section class="band" id="dataset" hidden>
       <div class="shell">
         <div class="section-head reveal">
           <div><div class="section-label">Regression set</div><h2>8 条常规彩色样本，难度并不平均</h2></div>
@@ -622,20 +660,13 @@
     <section class="band dark" id="architecture">
       <div class="shell">
         <div class="section-head reveal">
-          <div><div class="section-label">Recognition architecture</div><h2>真正的瓶颈不是 OpenCV 本身，而是证据流向</h2></div>
-          <p>当前管线把动作是否存在绑定在棋盘稳定态上，又常用消除后的棋盘差分倒推形状。后处理能修已生成的动作，却救不回根本没有生成的动作。</p>
+          <div><div class="section-label">Business value</div><h2>把重复的视频制作，变成可规模化的生产流程</h2></div>
+          <p>项目重点不是增加一个剪辑工具，而是把玩法还原、素材替换和多尺寸导出串成自动化生产能力。</p>
         </div>
         <div class="root-causes reveal">
-          <article class="cause"><div class="cause-code">ROOT / DETECTION</div><h3>动作诞生依赖稳定态</h3><p>快动作、落子即消或短暂过渡没有形成独立稳定态时，动作候选不会出现，形成 recall 天花板。</p></article>
-          <article class="cause"><div class="cause-code">ROOT / SHAPE</div><h3>棋盘差分污染形状</h3><p>消除、阴影和半贴合会改变棋盘差分；用它覆盖托盘中更干净的方块形状，容易造成 shape 与 clear 连锁错误。</p></article>
-          <article class="cause"><div class="cause-code">ROOT / METRIC</div><h3>检测与识别曾被混算</h3><p>漏检导致动作配对错位，形状、槽位、落点指标会一起被污染。新评测已开始拆分 action count 与 aligned 指标。</p></article>
-        </div>
-        <div class="architecture reveal" aria-label="系统架构流程">
-          <article class="arch-stage"><i data-lucide="monitor-up"></i><h3>变体生成工作台</h3><p>上传样本、自动识别、批量配方和生成队列；标注与校准作为后台工具独立存在。</p></article>
-          <div class="arch-arrow"><i data-lucide="arrow-right"></i></div>
-          <article class="arch-stage"><i data-lucide="scan-eye"></i><h3>本地视觉与规则层</h3><p><code>variant_bridge.py</code> 调度 <code>timeline_analyzer.py</code>，输出候选和可回放脚本。</p></article>
-          <div class="arch-arrow"><i data-lucide="arrow-right"></i></div>
-          <article class="arch-stage"><i data-lucide="clapperboard"></i><h3>Unity 确定性回放</h3><p>替换素材、按目标比例填满画面、保留声音并由录制收尾器输出成片。</p></article>
+          <article class="cause"><div class="cause-code">EFFICIENCY</div><h3>提高素材生产效率</h3><p>一条样片可以组合多套背景、方块和画幅，减少重复录制与逐条制作。</p></article>
+          <article class="cause"><div class="cause-code">SCALE</div><h3>扩大创意测试规模</h3><p>用批量队列快速产出差异化版本，为投放测试提供更多素材组合。</p></article>
+          <article class="cause"><div class="cause-code">CONTROL</div><h3>本地运行，过程可控</h3><p>视频与素材保留在本机，识别、回放和输出形成完整闭环，便于持续迭代。</p></article>
         </div>
       </div>
     </section>
@@ -643,34 +674,31 @@
     <section class="band alt" id="progress">
       <div class="shell">
         <div class="section-head reveal">
-          <div><div class="section-label">Optimization roadmap</div><h2>从后处理调参，转向托盘优先</h2></div>
-          <p>连续多轮序列过滤与补漏实验已进入平台期。下一阶段不再围绕两个样本反复调阈值，而是先建立托盘逐槽真值，再翻转 shape / slot 的证据优先级。</p>
+          <div><div class="section-label">Delivery roadmap</div><h2>下一阶段：从“可以演示”走向“稳定批量使用”</h2></div>
+          <p>当前产品链路已经完整，后续工作聚焦准确率、测试覆盖和批量生成稳定性，不再扩散功能范围。</p>
         </div>
         <div class="progress-layout">
           <aside class="progress-summary reveal">
-            <div class="progress-number">C1</div>
-            <h3>已完成基础读取器强化</h3>
-            <p>托盘拆格现在能够输出 0–1 自评分，并对不连通形状保留最大四连通分量。开关默认关闭。</p>
+            <div class="progress-number">70%</div>
+            <h3>核心产品能力已完成</h3>
+            <p>上传、自动识别、素材替换、多画幅输出、音频保留和批量任务队列已经贯通。</p>
             <ul>
-              <li>8 条彩色样本 A/B：动作级指标完全不变</li>
-              <li>硬门槛通过：precision 未下降，DEV-004 未碎片化</li>
-              <li>结论：零回归基建成立，但 score 尚无下游消费者</li>
+              <li>当前重点：提升常规彩色方块识别准确率</li>
+              <li>同步扩大测试样本，避免小样本结论偏差</li>
+              <li>持续验证长时间批量生成的稳定性</li>
             </ul>
           </aside>
           <div class="roadmap reveal">
-            <article class="roadmap-item"><div class="roadmap-code">PHASE 0</div><div><h3>检测 / 识别解耦评测</h3><p>增加 actionCountExact、matchedAligned、分场景报表；代码和单测已完成，可信基线仍需扩到计划中的 12 条调优集。</p></div><span class="status done">代码完成</span></article>
-            <article class="roadmap-item"><div class="roadmap-code">C1</div><div><h3>托盘自评分与连通修复</h3><p><code>tray_shape_grid_refine_v1</code> 已完成并通过 8 条 A/B；动作级无收益也无回归，为 C2 提供置信度。</p></div><span class="status done">零回归</span></article>
-            <article class="roadmap-item"><div class="roadmap-code">TRUTH</div><div><h3>托盘逐槽真值与评测</h3><p>设计和实现计划已完成；下一步标注 DEV-008、DEV-004、DEV-011，直接区分“槽没检出”和“形状拆错”。</p></div><span class="status active">下一步</span></article>
-            <article class="roadmap-item"><div class="roadmap-code">C2</div><div><h3>翻转形状证据优先级</h3><p>高质量托盘形状优先于被消除污染的棋盘差分；棋盘继续负责 target 与 clear。</p></div><span class="status todo">待验证</span></article>
-            <article class="roadmap-item"><div class="roadmap-code">C3–C4</div><div><h3>槽位生命周期驱动动作</h3><p>让“槽清空”独立触发动作候选，并识别下一轮槽位重新填充，直接处理漏检。</p></div><span class="status todo">待开发</span></article>
-            <article class="roadmap-item"><div class="roadmap-code">TRIAGE</div><div><h3>置信度分诊与人工修正成本</h3><p>自动接受高置信且规则复现一致的动作；低置信组件按影响排序进入复核。</p></div><span class="status todo">待开发</span></article>
-            <article class="roadmap-item"><div class="roadmap-code">MODEL</div><div><h3>定点轻量模型</h3><p>仅当托盘真值证明像素阈值达到上限时，用于单格占用或槽内形状分类；规则模拟闸门始终保留。</p></div><span class="status hold">暂缓</span></article>
+            <article class="roadmap-item"><div class="roadmap-code">01</div><div><h3>完整生成链路</h3><p>实现从样片导入到多版本视频输出，支持素材和尺寸组合。</p></div><span class="status done">已完成</span></article>
+            <article class="roadmap-item"><div class="roadmap-code">02</div><div><h3>常规场景准确率</h3><p>集中解决快速动作漏识别和复杂方块形状判断问题。</p></div><span class="status active">进行中</span></article>
+            <article class="roadmap-item"><div class="roadmap-code">03</div><div><h3>扩大验证范围</h3><p>补充更多视频、画面风格和动作节奏，形成更可信的验收结果。</p></div><span class="status todo">下一步</span></article>
+            <article class="roadmap-item"><div class="roadmap-code">04</div><div><h3>批量稳定性验收</h3><p>验证连续生成、异常恢复、音画一致性和输出质量，准备内部试用。</p></div><span class="status todo">待验证</span></article>
           </div>
         </div>
       </div>
     </section>
 
-    <section class="band" id="experiments">
+    <section class="band" id="experiments" hidden>
       <div class="shell">
         <div class="section-head reveal">
           <div><div class="section-label">Experiment record</div><h2>无效实验也被保留下来</h2></div>
@@ -691,7 +719,7 @@
       </div>
     </section>
 
-    <section class="band alt" id="review">
+    <section class="band alt" id="review" hidden>
       <div class="shell workbench-shot">
         <div class="screen-frame reveal"><img src="assets/overview-annotation.png" alt="视频动作标注工作台的样本导入和识别入口。"></div>
         <div class="workbench-copy reveal">
@@ -708,7 +736,7 @@
       </div>
     </section>
 
-    <section class="band" id="code">
+    <section class="band" id="code" hidden>
       <div class="shell">
         <div class="section-head reveal">
           <div><div class="section-label">Code map</div><h2>核心模块与职责</h2></div>
