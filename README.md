@@ -2,6 +2,8 @@
 
 本项目是一个本地运行的方块消除/拼图类素材变体工作台，覆盖样本视频识别、动作标注、确定性回放、素材替换和批量变体视频生成。
 
+[查看图文项目全景](docs/project-overview.html)
+
 ## Directory Layout
 
 - `variant_bridge.py` - 本地 HTTP bridge 服务入口。

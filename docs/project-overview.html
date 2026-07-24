@@ -1,0 +1,758 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="爆款素材变体生成器项目介绍、当前评测基线、识别架构与优化进度。">
+  <title>爆款素材变体生成器 · 项目全景</title>
+  <style>
+    :root {
+      --ink: #172231;
+      --muted: #647183;
+      --line: #d6e0e8;
+      --paper: #f5f8fa;
+      --surface: #ffffff;
+      --blue: #1769e0;
+      --blue-soft: #eaf3ff;
+      --teal: #0d766e;
+      --teal-soft: #e6f6f2;
+      --amber: #a96500;
+      --amber-soft: #fff3d8;
+      --rose: #b93d52;
+      --rose-soft: #fff0f2;
+      --navy: #17263a;
+      --rail: #25354a;
+      --shadow: 0 18px 42px rgba(23, 34, 49, .09);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--paper);
+      font: 15px/1.7 "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
+    }
+    img { display: block; max-width: 100%; }
+    a { color: inherit; }
+    button, a { -webkit-tap-highlight-color: transparent; }
+    :focus-visible { outline: 3px solid rgba(23, 105, 224, .32); outline-offset: 3px; }
+
+    .shell { width: min(1180px, calc(100% - 48px)); margin: 0 auto; }
+    .utility {
+      min-height: 58px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      color: #fff;
+      background: var(--navy);
+      border-bottom: 1px solid rgba(255,255,255,.12);
+    }
+    .utility-inner {
+      width: min(1240px, calc(100% - 32px));
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+    }
+    .utility-brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      color: #fff;
+      text-decoration: none;
+      white-space: nowrap;
+      font-family: "Bahnschrift SemiCondensed", "Microsoft YaHei", sans-serif;
+      font-weight: 700;
+    }
+    .utility-brand svg { width: 20px; height: 20px; }
+    .utility-nav { display: flex; align-items: center; gap: 18px; }
+    .utility-nav a {
+      color: #c9d4df;
+      text-decoration: none;
+      font-size: 12px;
+    }
+    .utility-nav a:hover { color: #fff; }
+    .open-app {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      min-height: 34px;
+      padding: 6px 11px;
+      color: #fff !important;
+      background: var(--blue);
+      border: 1px solid #4389e6;
+      border-radius: 5px;
+      font-weight: 700;
+    }
+    .open-app svg { width: 16px; height: 16px; }
+
+    .hero {
+      min-height: min(720px, calc(100svh - 96px));
+      position: relative;
+      display: grid;
+      align-items: stretch;
+      isolation: isolate;
+      overflow: hidden;
+      background: #dfe7ed url("assets/overview-home.png") center / cover no-repeat;
+      border-bottom: 1px solid var(--line);
+    }
+    .hero::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: min(58%, 760px);
+      z-index: -1;
+      background: rgba(15, 27, 43, .92);
+    }
+    .hero-copy {
+      width: min(1180px, calc(100% - 48px));
+      margin: 0 auto;
+      display: grid;
+      align-content: center;
+      padding: 72px 0 84px;
+    }
+    .hero-content { width: min(590px, 50%); color: #fff; }
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: #8ed7ce;
+      font: 700 12px/1.2 "Cascadia Mono", Consolas, monospace;
+      text-transform: uppercase;
+    }
+    .eyebrow::before { content: ""; width: 28px; height: 2px; background: #38ad9f; }
+    h1, h2, h3, p { margin-top: 0; }
+    h1 {
+      max-width: 590px;
+      margin: 22px 0 18px;
+      font: 700 clamp(42px, 6vw, 78px)/1.02 "Bahnschrift SemiCondensed", "Microsoft YaHei", sans-serif;
+      letter-spacing: 0;
+    }
+    .hero-lead { max-width: 540px; color: #d8e2eb; font-size: 18px; line-height: 1.7; }
+    .hero-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 30px; }
+    .hero-actions a {
+      min-height: 40px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 13px;
+      border: 1px solid rgba(255,255,255,.36);
+      border-radius: 5px;
+      color: #fff;
+      text-decoration: none;
+      font-weight: 700;
+    }
+    .hero-actions a:first-child { background: var(--blue); border-color: var(--blue); }
+    .hero-actions svg { width: 17px; height: 17px; }
+    .hero-facts {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 18px;
+      margin-top: 38px;
+      color: #aebdca;
+      font-size: 12px;
+    }
+    .hero-facts span { display: inline-flex; align-items: center; gap: 7px; }
+    .hero-facts svg { width: 15px; height: 15px; color: #8ed7ce; }
+
+    .band { padding: 86px 0; border-bottom: 1px solid var(--line); background: var(--surface); }
+    .band.alt { background: #eef3f6; }
+    .band.dark { color: #fff; background: var(--navy); border-color: #32445b; }
+    .section-head {
+      display: grid;
+      grid-template-columns: minmax(0, .85fr) minmax(300px, 1.15fr);
+      gap: 70px;
+      align-items: end;
+      margin-bottom: 46px;
+    }
+    .section-label {
+      margin-bottom: 12px;
+      color: var(--blue);
+      font: 700 12px/1.2 "Cascadia Mono", Consolas, monospace;
+      text-transform: uppercase;
+    }
+    .dark .section-label { color: #8ed7ce; }
+    h2 {
+      margin-bottom: 0;
+      font: 700 clamp(30px, 4vw, 48px)/1.12 "Bahnschrift SemiCondensed", "Microsoft YaHei", sans-serif;
+      letter-spacing: 0;
+    }
+    .section-head p { margin-bottom: 0; color: var(--muted); font-size: 16px; }
+    .dark .section-head p { color: #b8c6d3; }
+
+    .workflow {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      border: 1px solid var(--line);
+      background: #fff;
+    }
+    .workflow-item { min-height: 232px; padding: 24px; border-right: 1px solid var(--line); }
+    .workflow-item:last-child { border-right: 0; }
+    .workflow-index {
+      color: var(--muted);
+      font: 700 11px/1 "Cascadia Mono", Consolas, monospace;
+    }
+    .workflow-icon {
+      width: 42px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      margin: 24px 0 30px;
+      color: #fff;
+      background: var(--rail);
+      border-radius: 6px;
+    }
+    .workflow-icon svg { width: 21px; height: 21px; }
+    .workflow-item h3 { margin-bottom: 7px; font-size: 16px; }
+    .workflow-item p { margin-bottom: 0; color: var(--muted); font-size: 13px; }
+
+    .screen-figure { margin: 42px 0 0; }
+    .screen-frame {
+      overflow: hidden;
+      border: 1px solid #bac7d1;
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      background: #fff;
+    }
+    .screen-frame img { width: 100%; }
+    .screen-caption {
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+      padding-top: 12px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .screen-caption strong { color: var(--ink); }
+
+    .metric-strip {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+    }
+    .metric {
+      padding: 25px 22px;
+      border-right: 1px solid var(--line);
+      background: rgba(255,255,255,.72);
+    }
+    .metric:last-child { border-right: 0; }
+    .metric-name { color: var(--muted); font-size: 12px; }
+    .metric-value {
+      margin: 6px 0 2px;
+      font: 700 36px/1.05 "Bahnschrift SemiCondensed", "Microsoft YaHei", sans-serif;
+    }
+    .metric-delta { color: var(--teal); font-size: 12px; }
+    .metric-delta.down { color: var(--rose); }
+    .metric-note { color: var(--muted); font-size: 11px; }
+
+    .metric-detail {
+      display: grid;
+      grid-template-columns: .9fr 1.1fr;
+      gap: 52px;
+      margin-top: 42px;
+      align-items: start;
+    }
+    .score-list { display: grid; gap: 16px; }
+    .score-row {
+      display: grid;
+      grid-template-columns: 120px 1fr 62px;
+      gap: 12px;
+      align-items: center;
+      font-size: 12px;
+    }
+    .score-track { height: 9px; overflow: hidden; background: #dce5eb; border-radius: 999px; }
+    .score-fill { height: 100%; background: var(--blue); border-radius: inherit; }
+    .score-row.warn .score-fill { background: var(--amber); }
+    .score-row.down .score-fill { background: var(--rose); }
+    .score-value { text-align: right; font-family: "Cascadia Mono", Consolas, monospace; }
+    .benchmark-note {
+      padding: 22px 0 22px 24px;
+      border-left: 3px solid var(--amber);
+    }
+    .benchmark-note h3 { margin-bottom: 9px; font-size: 16px; }
+    .benchmark-note p { margin-bottom: 10px; color: var(--muted); }
+    .benchmark-note p:last-child { margin-bottom: 0; }
+
+    .table-wrap { overflow-x: auto; border: 1px solid var(--line); background: #fff; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; white-space: nowrap; }
+    th, td { padding: 12px 13px; text-align: right; border-bottom: 1px solid #e5ebef; }
+    th { color: var(--muted); background: #f7f9fa; font-weight: 700; }
+    th:first-child, td:first-child { text-align: left; }
+    tbody tr:last-child td { border-bottom: 0; }
+    tbody tr:hover { background: #f5f9fd; }
+    .sample-id { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; }
+    .sample-mark { width: 7px; height: 7px; border-radius: 50%; background: var(--teal); }
+    .sample-mark.warn { background: var(--amber); }
+    .sample-mark.risk { background: var(--rose); }
+    .weak { color: var(--rose); font-weight: 700; }
+    .good { color: var(--teal); font-weight: 700; }
+    .dataset-foot {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1px;
+      margin-top: 18px;
+      background: var(--line);
+      border: 1px solid var(--line);
+    }
+    .dataset-foot div { padding: 15px 16px; background: #fff; }
+    .dataset-foot strong { display: block; font-size: 14px; }
+    .dataset-foot span { color: var(--muted); font-size: 11px; }
+
+    .root-causes {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      border-top: 1px solid #3b4c63;
+      border-bottom: 1px solid #3b4c63;
+    }
+    .cause { padding: 30px 28px; border-right: 1px solid #3b4c63; }
+    .cause:last-child { border-right: 0; }
+    .cause-code { color: #8ed7ce; font: 700 11px/1 "Cascadia Mono", Consolas, monospace; }
+    .cause h3 { margin: 20px 0 10px; font-size: 18px; }
+    .cause p { margin: 0; color: #b8c6d3; font-size: 13px; }
+
+    .architecture {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr auto 1fr;
+      gap: 14px;
+      align-items: stretch;
+      margin-top: 42px;
+    }
+    .arch-stage {
+      min-height: 175px;
+      padding: 20px;
+      border: 1px solid #41536a;
+      background: #1d2d42;
+    }
+    .arch-stage svg { width: 22px; height: 22px; color: #8ed7ce; }
+    .arch-stage h3 { margin: 28px 0 7px; font-size: 15px; }
+    .arch-stage p { margin: 0; color: #aebdca; font-size: 12px; }
+    .arch-arrow { display: grid; place-items: center; color: #6f849b; }
+    .arch-arrow svg { width: 18px; height: 18px; }
+
+    .progress-layout { display: grid; grid-template-columns: 330px 1fr; gap: 54px; align-items: start; }
+    .progress-summary { position: sticky; top: 86px; }
+    .progress-number {
+      font: 700 82px/.9 "Bahnschrift SemiCondensed", "Microsoft YaHei", sans-serif;
+      color: var(--blue);
+    }
+    .progress-summary h3 { margin: 18px 0 8px; font-size: 20px; }
+    .progress-summary p { color: var(--muted); }
+    .progress-summary ul { margin: 22px 0 0; padding: 0; list-style: none; color: var(--muted); font-size: 12px; }
+    .progress-summary li { padding: 8px 0; border-top: 1px solid var(--line); }
+    .roadmap { border-top: 1px solid var(--line); }
+    .roadmap-item {
+      display: grid;
+      grid-template-columns: 104px 1fr 104px;
+      gap: 24px;
+      padding: 24px 0;
+      border-bottom: 1px solid var(--line);
+      align-items: start;
+    }
+    .roadmap-code { font: 700 12px/1.4 "Cascadia Mono", Consolas, monospace; color: var(--muted); }
+    .roadmap-item h3 { margin-bottom: 7px; font-size: 16px; }
+    .roadmap-item p { margin-bottom: 0; color: var(--muted); font-size: 13px; }
+    .status {
+      display: inline-flex;
+      justify-content: center;
+      min-height: 28px;
+      padding: 4px 8px;
+      border: 1px solid;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .status.done { color: var(--teal); background: var(--teal-soft); border-color: #9ed8cd; }
+    .status.active { color: var(--amber); background: var(--amber-soft); border-color: #e4c47e; }
+    .status.todo { color: #617086; background: #eef2f5; border-color: #cbd5dd; }
+    .status.hold { color: var(--rose); background: var(--rose-soft); border-color: #e5abb5; }
+
+    .experiment-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .experiment {
+      min-height: 116px;
+      display: grid;
+      grid-template-columns: 42px 1fr auto;
+      gap: 14px;
+      align-items: start;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #fff;
+    }
+    .experiment-icon {
+      width: 42px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      border-radius: 6px;
+      color: var(--muted);
+      background: #edf2f5;
+    }
+    .experiment-icon svg { width: 20px; height: 20px; }
+    .experiment h3 { margin-bottom: 5px; font-size: 14px; }
+    .experiment p { margin-bottom: 0; color: var(--muted); font-size: 11px; }
+
+    .workbench-shot {
+      display: grid;
+      grid-template-columns: 1.15fr .85fr;
+      gap: 32px;
+      align-items: center;
+    }
+    .workbench-copy h2 { margin-bottom: 18px; }
+    .workbench-copy p { color: var(--muted); }
+    .check-list { display: grid; gap: 9px; margin-top: 24px; }
+    .check-item { display: flex; align-items: flex-start; gap: 9px; font-size: 13px; }
+    .check-item svg { width: 17px; height: 17px; flex: 0 0 auto; margin-top: 4px; color: var(--teal); }
+
+    .code-map { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); }
+    .code-map article { min-height: 142px; padding: 18px; background: #fff; }
+    .code-map code { color: var(--blue); font: 700 12px/1.4 "Cascadia Mono", Consolas, monospace; }
+    .code-map p { margin: 14px 0 0; color: var(--muted); font-size: 12px; }
+
+    footer { padding: 34px 0 42px; color: #aebdca; background: var(--navy); }
+    .footer-inner { display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+    .footer-inner a { color: #fff; }
+    .footer-meta { font: 12px/1.6 "Cascadia Mono", Consolas, monospace; }
+
+    .reveal { opacity: 0; transform: translateY(14px); transition: opacity .45s ease, transform .45s ease; }
+    .reveal.visible { opacity: 1; transform: none; }
+
+    @media (max-width: 900px) {
+      .utility-nav a:not(.open-app) { display: none; }
+      .hero { min-height: 680px; background-position: 62% center; }
+      .hero::before { width: 76%; }
+      .hero-content { width: 66%; }
+      .section-head, .metric-detail, .workbench-shot { grid-template-columns: 1fr; gap: 24px; }
+      .workflow, .metric-strip { grid-template-columns: 1fr 1fr; }
+      .workflow-item:nth-child(2) { border-right: 0; }
+      .workflow-item:nth-child(-n+2) { border-bottom: 1px solid var(--line); }
+      .metric:nth-child(2) { border-right: 0; }
+      .metric:nth-child(-n+2) { border-bottom: 1px solid var(--line); }
+      .root-causes { grid-template-columns: 1fr; }
+      .cause { border-right: 0; border-bottom: 1px solid #3b4c63; }
+      .cause:last-child { border-bottom: 0; }
+      .architecture { grid-template-columns: 1fr; }
+      .arch-arrow { transform: rotate(90deg); min-height: 28px; }
+      .progress-layout { grid-template-columns: 1fr; }
+      .progress-summary { position: static; }
+      .code-map { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 620px) {
+      .shell, .hero-copy { width: min(100% - 28px, 1180px); }
+      .utility-inner { width: calc(100% - 24px); }
+      .utility-brand span { display: none; }
+      .hero { min-height: 650px; background-position: 70% center; }
+      .hero::before { width: 100%; background: rgba(15, 27, 43, .91); }
+      .hero-content { width: 100%; }
+      h1 { font-size: 45px; }
+      .band { padding: 64px 0; }
+      .section-head { margin-bottom: 32px; }
+      .workflow, .metric-strip, .dataset-foot, .experiment-grid, .code-map { grid-template-columns: 1fr; }
+      .workflow-item, .metric { border-right: 0; border-bottom: 1px solid var(--line); }
+      .workflow-item:last-child, .metric:last-child { border-bottom: 0; }
+      .screen-caption, .footer-inner { display: grid; }
+      .score-row { grid-template-columns: 94px 1fr 54px; }
+      .roadmap-item { grid-template-columns: 70px 1fr; }
+      .roadmap-item .status { grid-column: 2; width: max-content; }
+      .progress-number { font-size: 68px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      .reveal { opacity: 1; transform: none; transition: none; }
+    }
+  </style>
+</head>
+<body>
+  <header class="utility">
+    <div class="utility-inner">
+      <a class="utility-brand" href="#top"><i data-lucide="blocks"></i><span>Block Puzzle Variant Studio</span></a>
+      <nav class="utility-nav" aria-label="页面导航">
+        <a href="#workflow">工作流</a>
+        <a href="#baseline">当前基线</a>
+        <a href="#progress">优化进度</a>
+        <a href="#architecture">架构</a>
+        <a class="open-app" href="../index.html"><i data-lucide="arrow-up-right"></i>打开生成器</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <div class="hero-content">
+          <div class="eyebrow">Local-first video automation</div>
+          <h1 id="hero-title">爆款素材<br>变体生成器</h1>
+          <p class="hero-lead">从游戏录屏中识别方块、落点与消除动作，经人工复核和确定性规则校验后，更换背景、方块素材与画面比例，批量生成可复现的变体视频。</p>
+          <div class="hero-actions">
+            <a href="../index.html"><i data-lucide="play"></i>进入生成器</a>
+            <a href="#baseline"><i data-lucide="chart-no-axes-combined"></i>查看当前精度</a>
+          </div>
+          <div class="hero-facts">
+            <span><i data-lucide="hard-drive"></i>本地运行</span>
+            <span><i data-lucide="shield-check"></i>规则回放校验</span>
+            <span><i data-lucide="film"></i>60fps 输出</span>
+            <span><i data-lucide="test-tube-2"></i>104 项自动测试</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="band" id="workflow">
+      <div class="shell">
+        <div class="section-head reveal">
+          <div><div class="section-label">Product workflow</div><h2>一条从样本到成片的确定性流水线</h2></div>
+          <p>识别并不是终点。项目把视频理解、动作复核、素材替换和 Unity 回放连成闭环，所有低置信结果都可以在生成前被看到、修正和验证。</p>
+        </div>
+        <div class="workflow reveal">
+          <article class="workflow-item">
+            <div class="workflow-index">INPUT / 01</div>
+            <div class="workflow-icon"><i data-lucide="file-video-2"></i></div>
+            <h3>上传样本</h3>
+            <p>支持多视频批量导入，读取棋盘区域、底部托盘和动作时间线。</p>
+          </article>
+          <article class="workflow-item">
+            <div class="workflow-index">VISION / 02</div>
+            <div class="workflow-icon"><i data-lucide="scan-search"></i></div>
+            <h3>识别动作</h3>
+            <p>拆解来源槽位、方块形状、棋盘落点、消除状态和稳定画面区间。</p>
+          </article>
+          <article class="workflow-item">
+            <div class="workflow-index">TRUTH / 03</div>
+            <div class="workflow-icon"><i data-lucide="list-checks"></i></div>
+            <h3>校对真值</h3>
+            <p>逐步核对视觉证据，规则模拟必须能够精确复现后续棋盘。</p>
+          </article>
+          <article class="workflow-item">
+            <div class="workflow-index">OUTPUT / 04</div>
+            <div class="workflow-icon"><i data-lucide="layers-3"></i></div>
+            <h3>批量生成</h3>
+            <p>组合背景、方块素材与 9:16、1:1、16:9 比例，按队列输出视频。</p>
+          </article>
+        </div>
+        <figure class="screen-figure reveal">
+          <div class="screen-frame"><img src="assets/overview-home.png" alt="批量变体视频生成主页，包含多视频样本、背景和方块配方、输出尺寸与生成队列。"></div>
+          <figcaption class="screen-caption"><strong>当前主页：纯粹的变体生成工作流</strong><span>校准、真值与编辑器接口已收进右上角系统工具菜单</span></figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section class="band alt" id="baseline">
+      <div class="shell">
+        <div class="section-head reveal">
+          <div><div class="section-label">Measured baseline</div><h2>当前识别基线</h2></div>
+          <p>数据来自 2026-07-23 的 8 条常规彩色方块回归集，策略为 <code>color_block_v1</code>。共 167 个真值动作，预测 156 个，匹配 151 个。</p>
+        </div>
+        <div class="metric-strip reveal">
+          <div class="metric">
+            <div class="metric-name">Precision</div>
+            <div class="metric-value">96.79%</div>
+            <div class="metric-delta">较 7/22 记录 +1.28pp</div>
+          </div>
+          <div class="metric">
+            <div class="metric-name">Recall</div>
+            <div class="metric-value">90.42%</div>
+            <div class="metric-delta">较 7/22 记录 +1.20pp</div>
+          </div>
+          <div class="metric">
+            <div class="metric-name">Shape accuracy</div>
+            <div class="metric-value">85.43%</div>
+            <div class="metric-delta">较 7/22 记录 +0.87pp</div>
+          </div>
+          <div class="metric">
+            <div class="metric-name">Slot accuracy</div>
+            <div class="metric-value">91.39%</div>
+            <div class="metric-delta down">较 7/22 记录 -1.23pp</div>
+          </div>
+        </div>
+        <div class="metric-detail reveal">
+          <div class="score-list" aria-label="识别分项指标">
+            <div class="score-row"><span>目标落点</span><div class="score-track"><div class="score-fill" style="width:93.38%"></div></div><span class="score-value">93.38%</span></div>
+            <div class="score-row"><span>状态等价</span><div class="score-track"><div class="score-fill" style="width:90.73%"></div></div><span class="score-value">90.73%</span></div>
+            <div class="score-row warn"><span>消除状态</span><div class="score-track"><div class="score-fill" style="width:88.74%"></div></div><span class="score-value">88.74%</span></div>
+            <div class="score-row down"><span>方块形状</span><div class="score-track"><div class="score-fill" style="width:85.43%"></div></div><span class="score-value">85.43%</span></div>
+          </div>
+          <aside class="benchmark-note">
+            <h3>如何读这些数字</h3>
+            <p>Precision 较高，说明程序通常不会凭空多造动作；主要损失仍来自漏检和形状识别，当前共有 16 个 missed、5 个 false positive。</p>
+            <p>这套 8 条集合是当前可复现的彩色路径回归基线。计划中的 12 条调优集和 12 条封存集尚未全部接入，不能把“计划规模”写成“已测规模”。</p>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <section class="band" id="dataset">
+      <div class="shell">
+        <div class="section-head reveal">
+          <div><div class="section-label">Regression set</div><h2>8 条常规彩色样本，难度并不平均</h2></div>
+          <p>DEV-004、DEV-006 已接近完整复现；DEV-008 是召回和形状的主要短板；DEV-011、DEV-012 则更容易产生额外动作。总体均值不能替代逐样本观察。</p>
+        </div>
+        <div class="table-wrap reveal">
+          <table>
+            <thead><tr><th>样本</th><th>预测 / 真值</th><th>FP</th><th>漏检</th><th>Precision</th><th>Recall</th><th>Shape</th><th>Target</th><th>Clear</th></tr></thead>
+            <tbody>
+              <tr><td><span class="sample-id"><span class="sample-mark"></span>DEV-001</span></td><td>15 / 15</td><td>0</td><td>0</td><td class="good">100.00%</td><td class="good">100.00%</td><td>86.67%</td><td>86.67%</td><td>86.67%</td></tr>
+              <tr><td><span class="sample-id"><span class="sample-mark warn"></span>DEV-002</span></td><td>14 / 18</td><td>0</td><td>4</td><td class="good">100.00%</td><td>77.78%</td><td>85.71%</td><td>92.86%</td><td class="good">100.00%</td></tr>
+              <tr><td><span class="sample-id"><span class="sample-mark warn"></span>DEV-003</span></td><td>22 / 26</td><td>0</td><td>4</td><td class="good">100.00%</td><td>84.62%</td><td>86.36%</td><td>95.45%</td><td>90.91%</td></tr>
+              <tr><td><span class="sample-id"><span class="sample-mark"></span>DEV-004</span></td><td>30 / 30</td><td>0</td><td>0</td><td class="good">100.00%</td><td class="good">100.00%</td><td class="good">100.00%</td><td class="good">100.00%</td><td>93.33%</td></tr>
+              <tr><td><span class="sample-id"><span class="sample-mark"></span>DEV-006</span></td><td>19 / 19</td><td>0</td><td>0</td><td class="good">100.00%</td><td class="good">100.00%</td><td class="good">100.00%</td><td class="good">100.00%</td><td class="good">100.00%</td></tr>
+              <tr><td><span class="sample-id"><span class="sample-mark risk"></span>DEV-008</span></td><td>15 / 22</td><td>0</td><td class="weak">7</td><td class="good">100.00%</td><td class="weak">68.18%</td><td class="weak">60.00%</td><td>86.67%</td><td class="weak">66.67%</td></tr>
+              <tr><td><span class="sample-id"><span class="sample-mark risk"></span>DEV-011</span></td><td>21 / 19</td><td class="weak">3</td><td>1</td><td>85.71%</td><td>94.74%</td><td>77.78%</td><td>94.44%</td><td>94.44%</td></tr>
+              <tr><td><span class="sample-id"><span class="sample-mark risk"></span>DEV-012</span></td><td>20 / 18</td><td class="weak">2</td><td>0</td><td>90.00%</td><td class="good">100.00%</td><td>72.22%</td><td>83.33%</td><td>72.22%</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="dataset-foot reveal">
+          <div><strong>167 个真值动作</strong><span>当前 8 条彩色回归集</span></div>
+          <div><strong>151 个动作匹配</strong><span>5 个误报，16 个漏检</span></div>
+          <div><strong>20 / 60 真值进度</strong><span>页面当前已确认任务数量</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="band dark" id="architecture">
+      <div class="shell">
+        <div class="section-head reveal">
+          <div><div class="section-label">Recognition architecture</div><h2>真正的瓶颈不是 OpenCV 本身，而是证据流向</h2></div>
+          <p>当前管线把动作是否存在绑定在棋盘稳定态上，又常用消除后的棋盘差分倒推形状。后处理能修已生成的动作，却救不回根本没有生成的动作。</p>
+        </div>
+        <div class="root-causes reveal">
+          <article class="cause"><div class="cause-code">ROOT / DETECTION</div><h3>动作诞生依赖稳定态</h3><p>快动作、落子即消或短暂过渡没有形成独立稳定态时，动作候选不会出现，形成 recall 天花板。</p></article>
+          <article class="cause"><div class="cause-code">ROOT / SHAPE</div><h3>棋盘差分污染形状</h3><p>消除、阴影和半贴合会改变棋盘差分；用它覆盖托盘中更干净的方块形状，容易造成 shape 与 clear 连锁错误。</p></article>
+          <article class="cause"><div class="cause-code">ROOT / METRIC</div><h3>检测与识别曾被混算</h3><p>漏检导致动作配对错位，形状、槽位、落点指标会一起被污染。新评测已开始拆分 action count 与 aligned 指标。</p></article>
+        </div>
+        <div class="architecture reveal" aria-label="系统架构流程">
+          <article class="arch-stage"><i data-lucide="monitor-up"></i><h3>浏览器工作台</h3><p>批量配方、视频标注、校准、真值进度和生成队列。</p></article>
+          <div class="arch-arrow"><i data-lucide="arrow-right"></i></div>
+          <article class="arch-stage"><i data-lucide="scan-eye"></i><h3>本地视觉与规则层</h3><p><code>variant_bridge.py</code> 调度 <code>timeline_analyzer.py</code>，输出候选和可回放脚本。</p></article>
+          <div class="arch-arrow"><i data-lucide="arrow-right"></i></div>
+          <article class="arch-stage"><i data-lucide="clapperboard"></i><h3>Unity 确定性回放</h3><p>替换素材、按目标比例填满画面、保留声音并由录制收尾器输出成片。</p></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="band alt" id="progress">
+      <div class="shell">
+        <div class="section-head reveal">
+          <div><div class="section-label">Optimization roadmap</div><h2>从后处理调参，转向托盘优先</h2></div>
+          <p>连续多轮序列过滤与补漏实验已进入平台期。下一阶段不再围绕两个样本反复调阈值，而是先建立托盘逐槽真值，再翻转 shape / slot 的证据优先级。</p>
+        </div>
+        <div class="progress-layout">
+          <aside class="progress-summary reveal">
+            <div class="progress-number">C1</div>
+            <h3>已完成基础读取器强化</h3>
+            <p>托盘拆格现在能够输出 0–1 自评分，并对不连通形状保留最大四连通分量。开关默认关闭。</p>
+            <ul>
+              <li>8 条彩色样本 A/B：动作级指标完全不变</li>
+              <li>硬门槛通过：precision 未下降，DEV-004 未碎片化</li>
+              <li>结论：零回归基建成立，但 score 尚无下游消费者</li>
+            </ul>
+          </aside>
+          <div class="roadmap reveal">
+            <article class="roadmap-item"><div class="roadmap-code">PHASE 0</div><div><h3>检测 / 识别解耦评测</h3><p>增加 actionCountExact、matchedAligned、分场景报表；代码和单测已完成，可信基线仍需扩到计划中的 12 条调优集。</p></div><span class="status done">代码完成</span></article>
+            <article class="roadmap-item"><div class="roadmap-code">C1</div><div><h3>托盘自评分与连通修复</h3><p><code>tray_shape_grid_refine_v1</code> 已完成并通过 8 条 A/B；动作级无收益也无回归，为 C2 提供置信度。</p></div><span class="status done">零回归</span></article>
+            <article class="roadmap-item"><div class="roadmap-code">TRUTH</div><div><h3>托盘逐槽真值与评测</h3><p>设计和实现计划已完成；下一步标注 DEV-008、DEV-004、DEV-011，直接区分“槽没检出”和“形状拆错”。</p></div><span class="status active">下一步</span></article>
+            <article class="roadmap-item"><div class="roadmap-code">C2</div><div><h3>翻转形状证据优先级</h3><p>高质量托盘形状优先于被消除污染的棋盘差分；棋盘继续负责 target 与 clear。</p></div><span class="status todo">待验证</span></article>
+            <article class="roadmap-item"><div class="roadmap-code">C3–C4</div><div><h3>槽位生命周期驱动动作</h3><p>让“槽清空”独立触发动作候选，并识别下一轮槽位重新填充，直接处理漏检。</p></div><span class="status todo">待开发</span></article>
+            <article class="roadmap-item"><div class="roadmap-code">TRIAGE</div><div><h3>置信度分诊与人工修正成本</h3><p>自动接受高置信且规则复现一致的动作；低置信组件按影响排序进入复核。</p></div><span class="status todo">待开发</span></article>
+            <article class="roadmap-item"><div class="roadmap-code">MODEL</div><div><h3>定点轻量模型</h3><p>仅当托盘真值证明像素阈值达到上限时，用于单格占用或槽内形状分类；规则模拟闸门始终保留。</p></div><span class="status hold">暂缓</span></article>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="band" id="experiments">
+      <div class="shell">
+        <div class="section-head reveal">
+          <div><div class="section-label">Experiment record</div><h2>无效实验也被保留下来</h2></div>
+          <p>所有优化先由开关隔离，再做 baseline、单项和组合 A/B。负向结果不会进入默认路径，从而避免“看起来聪明、整体却退化”的改动。</p>
+        </div>
+        <div class="experiment-grid reveal">
+          <article class="experiment"><div class="experiment-icon"><i data-lucide="database"></i></div><div><h3>多帧候选缓存</h3><p>指标无变化，保留为诊断能力。</p></div><span class="status todo">诊断</span></article>
+          <article class="experiment"><div class="experiment-icon"><i data-lucide="vote"></i></div><div><h3>单格时间投票</h3><p>增加假动作，precision 明显下降。</p></div><span class="status hold">负向</span></article>
+          <article class="experiment"><div class="experiment-icon"><i data-lucide="git-branch"></i></div><div><h3>FSM 硬约束</h3><p>DEV-008 召回从 63.64% 降至 22.73%。</p></div><span class="status hold">负向</span></article>
+          <article class="experiment"><div class="experiment-icon"><i data-lucide="activity"></i></div><div><h3>稳定态质量评分</h3><p>过滤过强，召回下降。</p></div><span class="status hold">负向</span></article>
+          <article class="experiment"><div class="experiment-icon"><i data-lucide="scan-line"></i></div><div><h3>单帧阴影 refine</h3><p>与 baseline 完全一致。</p></div><span class="status todo">无变化</span></article>
+          <article class="experiment"><div class="experiment-icon"><i data-lucide="wrench"></i></div><div><h3>Clear / shape / target 修复</h3><p>单步修补没有推动整体指标。</p></div><span class="status todo">无变化</span></article>
+          <article class="experiment"><div class="experiment-icon"><i data-lucide="list-plus"></i></div><div><h3>候选序列补漏</h3><p>没有增加真匹配，反而引入误报。</p></div><span class="status hold">负向</span></article>
+          <article class="experiment"><div class="experiment-icon"><i data-lucide="shuffle"></i></div><div><h3>候选联合重评分</h3><p>两样本上 shape / semantic / clear 各 +2.22pp，规模不足以转正。</p></div><span class="status active">小幅正向</span></article>
+          <article class="experiment"><div class="experiment-icon"><i data-lucide="grid-3x3"></i></div><div><h3>托盘拆格 C1</h3><p>8 条回归集完全零变化、零回归。</p></div><span class="status done">基建完成</span></article>
+          <article class="experiment"><div class="experiment-icon"><i data-lucide="shield-check"></i></div><div><h3>规则复现闸门</h3><p>所有自动修正必须保持合法落点与后续棋盘一致。</p></div><span class="status done">持续启用</span></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="band alt" id="review">
+      <div class="shell workbench-shot">
+        <div class="screen-frame reveal"><img src="assets/overview-annotation.png" alt="视频动作标注工作台的样本导入和识别入口。"></div>
+        <div class="workbench-copy reveal">
+          <div class="section-label">Human in the loop</div>
+          <h2>识别不完美时，仍然可以可靠交付</h2>
+          <p>标注工作台不是算法失败后的补丁，而是产品安全边界。机器先完成高置信部分，操作者只处理真正有歧义的动作。</p>
+          <div class="check-list">
+            <div class="check-item"><i data-lucide="circle-check"></i><span>逐步查看放置前、拖拽中、放置后与消除后证据帧</span></div>
+            <div class="check-item"><i data-lucide="circle-check"></i><span>分别修正来源槽位、方块形状、棋盘落点和消除状态</span></div>
+            <div class="check-item"><i data-lucide="circle-check"></i><span>所有动作通过规则模拟后才保存为可回放真值</span></div>
+            <div class="check-item"><i data-lucide="circle-check"></i><span>下一阶段加入落子前三槽真值，直接评测托盘读取器</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="band" id="code">
+      <div class="shell">
+        <div class="section-head reveal">
+          <div><div class="section-label">Code map</div><h2>核心模块与职责</h2></div>
+          <p>项目保持本地优先：浏览器负责交互，本地 Python bridge 负责识别和任务调度，Unity 客户端负责确定性回放与录制。</p>
+        </div>
+        <div class="code-map reveal">
+          <article><code>index.html</code><p>变体生成主页、批量样本、素材配方、系统工具入口与本地 API 调用。</p></article>
+          <article><code>annotation-studio.*</code><p>视频动作标注、证据帧、时间区间、落点棋盘和确认流程。</p></article>
+          <article><code>variant_bridge.py</code><p>本地 HTTP 服务、任务缓存、真值保存、Unity 配置和回放调度。</p></article>
+          <article><code>timeline_analyzer.py</code><p>棋盘、托盘、稳定态、动作候选和时序证据的视觉识别核心。</p></article>
+          <article><code>truth_benchmark.py</code><p>动作检测、语义识别、aligned 指标与按场景评测。</p></article>
+          <article><code>recording_finalizer.py</code><p>画面比例填满、音频合流与最终视频收尾。</p></article>
+          <article><code>scripts/</code><p>真值重跑、A/B 实验、诊断和后续托盘逐槽评测脚本。</p></article>
+          <article><code>tests/</code><p>104 项自动测试，覆盖棋盘视觉、托盘拆格、评测与实验框架。</p></article>
+          <article><code>docs/</code><p>验收标准、架构改造、实验记录、托盘真值设计与实施计划。</p></article>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="shell footer-inner">
+      <div><strong>爆款素材变体生成器</strong><br><span>识别、校对、回放、变体生成，一个本地闭环。</span></div>
+      <div class="footer-meta">STATUS SNAPSHOT · 2026-07-24<br><a href="README.md">查看文档索引</a></div>
+    </div>
+  </footer>
+
+  <script src="../vendor/lucide.min.js"></script>
+  <script>
+    window.lucide?.createIcons({ attrs: { "aria-hidden": "true", "stroke-width": "1.8" } });
+    const revealItems = document.querySelectorAll(".reveal");
+    if ("IntersectionObserver" in window && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      const observer = new IntersectionObserver(entries => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("visible");
+            observer.unobserve(entry.target);
+          }
+        });
+      }, { threshold: .12 });
+      revealItems.forEach(item => observer.observe(item));
+    } else {
+      revealItems.forEach(item => item.classList.add("visible"));
+    }
+  </script>
+</body>
+</html>
