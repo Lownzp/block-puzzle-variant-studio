@@ -80,14 +80,19 @@
     .brand-lockup { display:flex; align-items:center; gap:10px; min-width:0; }
     .brand-mark { width:32px; height:32px; display:grid; place-items:center; flex:0 0 auto; color:#263649; }
     .header-actions { display:flex; align-items:center; justify-content:flex-end; gap:6px; flex-wrap:wrap; }
+    .header-tools-menu { width:240px; padding:8px; border-color:var(--line); box-shadow:0 14px 34px rgba(23,33,47,.14); }
+    .header-tools-title { padding:6px 10px 8px; color:var(--muted); font-size:11px; font-weight:700; letter-spacing:0; }
+    .header-tools-menu .dropdown-item { display:flex; align-items:center; gap:9px; min-height:38px; padding:8px 10px; border:0; border-radius:5px; color:#263649; }
+    .header-tools-menu .dropdown-item:hover,
+    .header-tools-menu .dropdown-item:focus { background:#eef5ff; color:#1559ad; }
+    .header-tools-menu .dropdown-divider { margin:6px 0; }
     @media(max-width:1040px){ .grid { grid-template-columns:1fr; } header { position:static; } th { top:0; } }
     @media(max-width:560px){
       main { padding:12px; }
-      header { padding:12px; flex-direction:column; align-items:stretch; }
+      header { padding:12px; }
       form { grid-template-columns:1fr; }
       .brand-lockup h1 { white-space:nowrap; }
-      .header-actions { display:grid; grid-template-columns:1fr 1fr; }
-      .header-actions .command-button { width:100%; min-width:0; }
+      .header-actions { flex:0 0 auto; }
     }
     .batch-panel { grid-column:1/-1; box-shadow:0 18px 45px rgba(31,45,61,.06); }
     .batch-panel .panel-head { padding:18px 20px; background:linear-gradient(90deg,#fff 0,#f7fbfd 100%); }
@@ -147,10 +152,17 @@
   <header class="app-header">
     <div class="brand-lockup"><div class="brand-mark" aria-hidden="true"><i data-lucide="blocks"></i></div><div><h1>爆款素材变体生成器</h1><div class="sub"><span class="local-dot"></span>本地工作区 · 数据不离开当前电脑</div></div></div>
     <nav class="header-actions" aria-label="全局工具">
-      <button class="primary command-button" id="videoRebuildBtn"><i data-lucide="video"></i><span>视频动作标注</span></button>
-      <button class="command-button" id="truthProgressBtn"><i data-lucide="database-check"></i><span>真值 <strong id="truthProgressCount">--/60</strong></span></button>
-      <button class="command-button" id="calibrateBtn"><i data-lucide="scan-line"></i><span>预览校准</span></button>
-      <button class="command-button" id="editorSettingsBtn"><i data-lucide="plug-zap"></i><span>编辑器接口</span></button>
+      <div class="dropdown">
+        <button class="icon-button" id="headerToolsBtn" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="打开系统工具" title="系统工具"><i data-lucide="settings-2"></i></button>
+        <div class="dropdown-menu dropdown-menu-end header-tools-menu" aria-labelledby="headerToolsBtn">
+          <div class="header-tools-title">系统工具</div>
+          <button class="dropdown-item" id="videoRebuildBtn" type="button"><i data-lucide="video"></i><span>视频动作标注</span></button>
+          <button class="dropdown-item" id="truthProgressBtn" type="button"><i data-lucide="database-check"></i><span>真值进度 <strong id="truthProgressCount">--/60</strong></span></button>
+          <div class="dropdown-divider"></div>
+          <button class="dropdown-item" id="calibrateBtn" type="button"><i data-lucide="scan-line"></i><span>预览校准</span></button>
+          <button class="dropdown-item" id="editorSettingsBtn" type="button"><i data-lucide="plug-zap"></i><span>编辑器接口</span></button>
+        </div>
+      </div>
       <span class="header-divider" aria-hidden="true" hidden></span>
       <button class="icon-button" id="exportBtn" aria-label="导出备份" title="导出备份" hidden><i data-lucide="download"></i></button>
       <button class="icon-button" id="importBtn" aria-label="导入备份" title="导入备份" hidden><i data-lucide="upload"></i></button>
@@ -348,7 +360,7 @@
     root.querySelectorAll('form select, .control-column select, .version-bar select').forEach(el=>el.classList.add('form-select'));
     root.querySelectorAll('form textarea, .control-column textarea').forEach(el=>el.classList.add('form-control'));
     root.querySelectorAll('button.primary').forEach(el=>el.classList.add('btn','btn-primary'));
-    root.querySelectorAll('.header-actions button:not(.primary):not(.danger), .panel-head>button:not(.primary), .toolrow button:not(.primary), .version-bar button, .source-calibration button, .workbench-actions button:not(.primary):not(.danger), .annotation-footer-actions button:not(.primary)').forEach(el=>el.classList.add('btn','btn-outline-secondary'));
+    root.querySelectorAll('.header-actions button:not(.primary):not(.danger):not(.dropdown-item), .panel-head>button:not(.primary), .toolrow button:not(.primary), .version-bar button, .source-calibration button, .workbench-actions button:not(.primary):not(.danger), .annotation-footer-actions button:not(.primary)').forEach(el=>el.classList.add('btn','btn-outline-secondary'));
     root.querySelectorAll('button.danger').forEach(el=>el.classList.add('btn','btn-outline-danger'));
   }
   function refreshIcons(){enhanceBootstrap();window.lucide?.createIcons({attrs:{class:'ui-icon','aria-hidden':'true'}});}
