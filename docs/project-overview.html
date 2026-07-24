@@ -492,7 +492,7 @@
         <div class="hero-content">
           <div class="eyebrow">Local-first video automation</div>
           <h1 id="hero-title">爆款素材<br>变体生成器</h1>
-          <p class="hero-lead">从游戏录屏中识别方块、落点与消除动作，经人工复核和确定性规则校验后，更换背景、方块素材与画面比例，批量生成可复现的变体视频。</p>
+          <p class="hero-lead">从游戏录屏中自动识别方块、落点与消除动作，经确定性规则校验后，更换背景、方块素材与画面比例，直接批量生成可复现的变体视频。</p>
           <div class="hero-actions">
             <a href="../index.html"><i data-lucide="play"></i>进入生成器</a>
             <a href="#baseline"><i data-lucide="chart-no-axes-combined"></i>查看当前精度</a>
@@ -511,7 +511,7 @@
       <div class="shell">
         <div class="section-head reveal">
           <div><div class="section-label">Product workflow</div><h2>一条从样本到成片的确定性流水线</h2></div>
-          <p>识别并不是终点。项目把视频理解、动作复核、素材替换和 Unity 回放连成闭环，所有低置信结果都可以在生成前被看到、修正和验证。</p>
+          <p>面向使用者的正式链路不要求核对真值。算法自动理解视频、完成规则一致性校验并驱动 Unity 回放；真值标注属于独立的研发链路，只用于提高后续自动识别精度。</p>
         </div>
         <div class="workflow reveal">
           <article class="workflow-item">
@@ -527,10 +527,10 @@
             <p>拆解来源槽位、方块形状、棋盘落点、消除状态和稳定画面区间。</p>
           </article>
           <article class="workflow-item">
-            <div class="workflow-index">TRUTH / 03</div>
-            <div class="workflow-icon"><i data-lucide="list-checks"></i></div>
-            <h3>校对真值</h3>
-            <p>逐步核对视觉证据，规则模拟必须能够精确复现后续棋盘。</p>
+            <div class="workflow-index">VERIFY / 03</div>
+            <div class="workflow-icon"><i data-lucide="shield-check"></i></div>
+            <h3>自动校验</h3>
+            <p>用合法落点和棋盘状态复现自动排除不一致候选，不要求用户逐步确认。</p>
           </article>
           <article class="workflow-item">
             <div class="workflow-index">OUTPUT / 04</div>
@@ -541,7 +541,7 @@
         </div>
         <figure class="screen-figure reveal">
           <div class="screen-frame"><img src="assets/overview-home.png" alt="批量变体视频生成主页，包含多视频样本、背景和方块配方、输出尺寸与生成队列。"></div>
-          <figcaption class="screen-caption"><strong>当前主页：纯粹的变体生成工作流</strong><span>校准、真值与编辑器接口已收进右上角系统工具菜单</span></figcaption>
+          <figcaption class="screen-caption"><strong>当前主页：上传、识别、配方与生成</strong><span>真值标注和校准属于后台算法工具，已收进右上角系统工具菜单</span></figcaption>
         </figure>
       </div>
     </section>
@@ -631,7 +631,7 @@
           <article class="cause"><div class="cause-code">ROOT / METRIC</div><h3>检测与识别曾被混算</h3><p>漏检导致动作配对错位，形状、槽位、落点指标会一起被污染。新评测已开始拆分 action count 与 aligned 指标。</p></article>
         </div>
         <div class="architecture reveal" aria-label="系统架构流程">
-          <article class="arch-stage"><i data-lucide="monitor-up"></i><h3>浏览器工作台</h3><p>批量配方、视频标注、校准、真值进度和生成队列。</p></article>
+          <article class="arch-stage"><i data-lucide="monitor-up"></i><h3>变体生成工作台</h3><p>上传样本、自动识别、批量配方和生成队列；标注与校准作为后台工具独立存在。</p></article>
           <div class="arch-arrow"><i data-lucide="arrow-right"></i></div>
           <article class="arch-stage"><i data-lucide="scan-eye"></i><h3>本地视觉与规则层</h3><p><code>variant_bridge.py</code> 调度 <code>timeline_analyzer.py</code>，输出候选和可回放脚本。</p></article>
           <div class="arch-arrow"><i data-lucide="arrow-right"></i></div>
@@ -695,14 +695,14 @@
       <div class="shell workbench-shot">
         <div class="screen-frame reveal"><img src="assets/overview-annotation.png" alt="视频动作标注工作台的样本导入和识别入口。"></div>
         <div class="workbench-copy reveal">
-          <div class="section-label">Human in the loop</div>
-          <h2>识别不完美时，仍然可以可靠交付</h2>
-          <p>标注工作台不是算法失败后的补丁，而是产品安全边界。机器先完成高置信部分，操作者只处理真正有歧义的动作。</p>
+          <div class="section-label">Algorithm development loop</div>
+          <h2>真值核对用于调算法，不属于生成步骤</h2>
+          <p>研发人员从测试集中抽取样本，核对程序识别结果并保存真值，再用 A/B 评测判断优化是否有效。普通使用者上传视频时不需要进入这个界面。</p>
           <div class="check-list">
-            <div class="check-item"><i data-lucide="circle-check"></i><span>逐步查看放置前、拖拽中、放置后与消除后证据帧</span></div>
-            <div class="check-item"><i data-lucide="circle-check"></i><span>分别修正来源槽位、方块形状、棋盘落点和消除状态</span></div>
-            <div class="check-item"><i data-lucide="circle-check"></i><span>所有动作通过规则模拟后才保存为可回放真值</span></div>
-            <div class="check-item"><i data-lucide="circle-check"></i><span>下一阶段加入落子前三槽真值，直接评测托盘读取器</span></div>
+            <div class="check-item"><i data-lucide="circle-check"></i><span>建立可信测试集，量化来源槽位、形状、落点和消除错误</span></div>
+            <div class="check-item"><i data-lucide="circle-check"></i><span>定位算法为什么看错，而不是让每位用户替算法纠错</span></div>
+            <div class="check-item"><i data-lucide="circle-check"></i><span>每个实验与固定真值比较，防止局部优化造成整体回归</span></div>
+            <div class="check-item"><i data-lucide="circle-check"></i><span>最终目标是提高自动识别率，让视频能够直接生成变体</span></div>
           </div>
         </div>
       </div>
@@ -731,7 +731,7 @@
 
   <footer>
     <div class="shell footer-inner">
-      <div><strong>爆款素材变体生成器</strong><br><span>识别、校对、回放、变体生成，一个本地闭环。</span></div>
+      <div><strong>爆款素材变体生成器</strong><br><span>自动识别、规则校验、回放与变体生成，一个本地闭环。</span></div>
       <div class="footer-meta">STATUS SNAPSHOT · 2026-07-24<br><a href="README.md">查看文档索引</a></div>
     </div>
   </footer>

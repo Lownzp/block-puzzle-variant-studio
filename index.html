@@ -216,14 +216,14 @@
         <div class="body">
           <div class="batch-layout">
             <div class="batch-card">
-              <h3 data-step="01">样本与动作脚本</h3>
+              <h3 data-step="01">样本视频</h3>
               <label>样本视频（可多选） <input id="batchSampleVideo" type="file" accept="video/*" multiple></label>
               <div class="batch-video-list" id="batchVideoList"><div class="hint">还没有识别视频。可一次选择多个视频。</div></div>
-              <div class="toolrow">
+              <div class="toolrow" hidden>
                 <button type="button" id="batchOpenReviewBtn" disabled>打开动作校对</button>
                 <button type="button" id="batchUseCurrentJobBtn">使用当前已确认任务</button>
               </div>
-              <div class="status batch-status-note" id="batchAnalyzeStatus">选择样本后先识别动作；如果已经在动作标注页处理过，也可以直接使用当前任务。</div>
+              <div class="status batch-status-note" id="batchAnalyzeStatus">选择样本并识别动作，完成后即可生成变体任务队列。</div>
             </div>
             <div class="batch-card">
               <h3 data-step="02">变体配方</h3>
