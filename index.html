@@ -9,10 +9,10 @@
   <link rel="stylesheet" href="vendor/vis-timeline/vis-timeline-graph2d.min.css">
   <link rel="stylesheet" href="vendor/cropperjs/cropper.min.css">
   <style>
-    :root { --ink:#18212b; --muted:#687582; --line:#dce3e8; --bg:#f5f7f8; --blue:#1769e0; --teal:#117b72; --warn:#a45b00; }
-    * { box-sizing:border-box; } body { margin:0; font:14px/1.45 "Microsoft YaHei",system-ui,sans-serif; color:var(--ink); background:var(--bg); }
-    header { background:#fff; border-bottom:1px solid var(--line); padding:16px 24px; display:flex; justify-content:space-between; align-items:center; gap:16px; position:sticky; top:0; z-index:3; }
-    h1 { font-size:19px; margin:0; } h2 { margin:0; font-size:16px; } .sub { color:var(--muted); font-size:12px; margin-top:3px; }
+    :root { --ink:#17212f; --muted:#667485; --line:#d7e0e8; --bg:#f3f6f8; --blue:#1769e0; --teal:#117b72; --warn:#a45b00; --surface:#ffffff; --wash:#eef4f7; --rail:#243142; }
+    * { box-sizing:border-box; } body { margin:0; font:14px/1.45 "Microsoft YaHei",system-ui,sans-serif; color:var(--ink); background:linear-gradient(180deg,#f8fafb 0,#f1f5f7 280px,var(--bg) 100%); }
+    header { background:rgba(255,255,255,.94); border-bottom:1px solid var(--line); padding:16px 24px; display:flex; justify-content:space-between; align-items:center; gap:16px; position:sticky; top:0; z-index:3; backdrop-filter:saturate(1.2) blur(8px); }
+    h1 { font-size:19px; margin:0; letter-spacing:0; } h2 { margin:0; font-size:16px; letter-spacing:0; } .sub { color:var(--muted); font-size:12px; margin-top:3px; }
     main { max-width:1600px; margin:0 auto; padding:20px 24px 48px; } .grid { display:grid; grid-template-columns:430px 1fr; gap:18px; align-items:start; }
     .panel { background:#fff; border:1px solid var(--line); border-radius:8px; overflow:hidden; } .panel-head { padding:14px 16px; border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:space-between; gap:10px; }
     .body { padding:16px; } .toolrow { display:flex; flex-wrap:wrap; gap:8px; } button { border:1px solid #b9c6d0; background:#fff; color:#17202a; border-radius:5px; padding:7px 10px; cursor:pointer; font:inherit; }
@@ -77,21 +77,38 @@
     @media(max-width:900px){ .action-editor-toolbar { grid-template-columns:1fr 1fr; } .evidence-strip { grid-column:1/-1; } .action-summary-row { grid-template-columns:64px 1fr auto; } }
     @media(max-width:600px){ .placement-cell { width:25px; height:25px; } .placement-editor { grid-template-columns:1fr; } }
     @media(max-width:900px){ .action-row { grid-template-columns:92px 1fr 1fr; } .action-meta { grid-column:2/-1; } }
-    @media(max-width:1040px){ .grid { grid-template-columns:1fr; } header { position:static; } th { top:0; } } @media(max-width:560px){ main{padding:12px;} header{padding:12px;} form{grid-template-columns:1fr;} }
-    .batch-panel { grid-column:1/-1; }
-    .batch-layout { display:grid; grid-template-columns:minmax(300px,420px) 1fr; gap:16px; align-items:start; }
-    .batch-card { border:1px solid var(--line); border-radius:6px; padding:14px; background:#fff; display:grid; gap:12px; }
-    .batch-card h3 { margin:0; font-size:14px; }
-    .batch-grid { display:grid; grid-template-columns:repeat(2,minmax(160px,1fr)); gap:10px 12px; }
+    .brand-lockup { display:flex; align-items:center; gap:10px; min-width:0; }
+    .brand-mark { width:32px; height:32px; display:grid; place-items:center; flex:0 0 auto; color:#263649; }
+    .header-actions { display:flex; align-items:center; justify-content:flex-end; gap:6px; flex-wrap:wrap; }
+    @media(max-width:1040px){ .grid { grid-template-columns:1fr; } header { position:static; } th { top:0; } }
+    @media(max-width:560px){
+      main { padding:12px; }
+      header { padding:12px; flex-direction:column; align-items:stretch; }
+      form { grid-template-columns:1fr; }
+      .brand-lockup h1 { white-space:nowrap; }
+      .header-actions { display:grid; grid-template-columns:1fr 1fr; }
+      .header-actions .command-button { width:100%; min-width:0; }
+    }
+    .batch-panel { grid-column:1/-1; box-shadow:0 18px 45px rgba(31,45,61,.06); }
+    .batch-panel .panel-head { padding:18px 20px; background:linear-gradient(90deg,#fff 0,#f7fbfd 100%); }
+    .batch-layout { display:grid; grid-template-columns:minmax(310px,390px) 1fr; gap:16px; align-items:start; }
+    .batch-card { border:1px solid var(--line); border-radius:8px; padding:16px; background:var(--surface); display:grid; gap:14px; box-shadow:0 1px 0 rgba(20,31,43,.03); }
+    .batch-card h3 { margin:0; font-size:14px; display:flex; align-items:center; gap:8px; }
+    .batch-card h3::before { content:attr(data-step); display:inline-grid; place-items:center; width:24px; height:24px; border-radius:6px; background:var(--rail); color:#fff; font:700 11px/1 ui-monospace,SFMono-Regular,Consolas,monospace; }
+    .batch-grid { display:grid; grid-template-columns:repeat(2,minmax(220px,1fr)); gap:14px; }
+    .recipe-field { border:1px solid #dbe4eb; border-radius:8px; padding:12px; background:#fbfdfe; display:grid; gap:8px; }
+    .recipe-field label { font-weight:700; color:#243142; }
+    .recipe-field select { min-height:124px; border-radius:6px; background:#fff; }
+    .recipe-field input[type=file] { background:#fff; }
     .batch-checks { display:flex; flex-wrap:wrap; gap:8px; }
-    .batch-check { display:inline-flex; align-items:center; gap:6px; min-height:32px; padding:5px 9px; border:1px solid #cbd5dc; border-radius:5px; background:#fff; color:#334155; }
+    .batch-check { display:inline-flex; align-items:center; gap:7px; min-height:34px; padding:6px 10px; border:1px solid #cbd5dc; border-radius:6px; background:#fff; color:#334155; }
     .batch-check input { width:auto; }
-    .batch-queue { border:1px solid var(--line); border-radius:6px; overflow:hidden; }
+    .batch-queue { border:1px solid var(--line); border-radius:8px; overflow:hidden; background:#fff; }
     .batch-status-pill { display:inline-flex; align-items:center; gap:5px; padding:2px 7px; border-radius:999px; background:#edf0f2; color:#53616d; font-size:12px; }
     .batch-status-pill.running { background:#e8f3ff; color:#16549b; }
     .batch-status-pill.complete { background:#e7f7ef; color:#117b72; }
     .batch-status-pill.failed { background:#fff1f0; color:#b42318; }
-    .batch-progress { margin-top:12px; padding:12px; border:1px solid var(--line); border-radius:6px; background:#f8fafc; }
+    .batch-progress { margin-top:2px; padding:12px; border:1px solid var(--line); border-radius:8px; background:#f8fafc; }
     .batch-progress-top { display:flex; justify-content:space-between; gap:12px; align-items:center; margin-bottom:8px; color:#304152; }
     .batch-progress-track { height:10px; overflow:hidden; border-radius:999px; background:#e5ebf0; }
     .batch-progress-bar { width:0%; height:100%; border-radius:inherit; background:#2563eb; transition:width .25s ease; }
@@ -105,7 +122,24 @@
     .debug-action-card { border:1px solid #d9e1e7; border-radius:6px; padding:8px; display:grid; gap:6px; background:#fafcfd; }
     .debug-action-card img { width:100%; aspect-ratio:9/16; object-fit:cover; border:1px solid var(--line); border-radius:4px; background:#edf2f6; }
     .debug-action-meta { font-size:12px; color:#475569; line-height:1.5; }
-    @media(max-width:1040px){ .batch-layout { grid-template-columns:1fr; } }
+    .batch-actions { display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; align-items:center; padding-top:2px; }
+    .batch-primary-actions { display:flex; gap:8px; flex-wrap:wrap; }
+    .batch-status-note { border:1px solid #cfe2ea; background:#f3faf9; border-radius:8px; padding:10px 12px; color:#35606a; }
+    .batch-video-list { display:grid; gap:8px; max-height:340px; overflow:auto; }
+    .batch-video-item { border:1px solid #dbe4eb; border-radius:7px; padding:9px; background:#fff; display:grid; gap:8px; }
+    .batch-video-top { display:flex; align-items:center; gap:7px; min-width:0; }
+    .batch-video-index { width:22px; height:22px; display:grid; place-items:center; border-radius:6px; background:#eaf2ff; color:#1769e0; font-size:11px; font-weight:700; flex:0 0 auto; }
+    .batch-video-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:600; flex:1; }
+    .batch-video-state { color:#117b72; font-size:11px; white-space:nowrap; }
+    .batch-video-recipes { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .batch-video-recipes label { display:grid; gap:4px; color:#5d6d7b; font-size:11px; }
+    .batch-video-recipes select { min-height:72px; padding:4px; font-size:12px; }
+    .recipe-picker { display:grid; grid-template-columns:repeat(auto-fill,minmax(118px,1fr)); gap:6px; }
+    .recipe-picker label { display:flex; align-items:center; gap:6px; min-height:32px; padding:6px 8px; border:1px solid #d7e1e8; border-radius:6px; background:#fff; cursor:pointer; font-size:12px; color:#334155; }
+    .recipe-picker label:has(input:checked) { border-color:#2879df; background:#eef6ff; color:#1559ad; box-shadow:inset 0 0 0 1px #2879df; }
+    .recipe-picker input { width:auto; accent-color:#1769e0; }
+    .batch-video-recipes .recipe-picker { grid-template-columns:1fr; max-height:132px; overflow:auto; }
+    @media(max-width:1040px){ .batch-layout { grid-template-columns:1fr; } .batch-grid { grid-template-columns:1fr; } }
   </style>
   <link rel="stylesheet" href="annotation-studio.css?v=20260721-21">
 </head>
@@ -113,7 +147,7 @@
   <header class="app-header">
     <div class="brand-lockup"><div class="brand-mark" aria-hidden="true"><i data-lucide="blocks"></i></div><div><h1>爆款素材变体生成器</h1><div class="sub"><span class="local-dot"></span>本地工作区 · 数据不离开当前电脑</div></div></div>
     <nav class="header-actions" aria-label="全局工具">
-      <button class="primary command-button" id="videoRebuildBtn"><i data-lucide="scan-video"></i><span>视频动作标注</span></button>
+      <button class="primary command-button" id="videoRebuildBtn"><i data-lucide="video"></i><span>视频动作标注</span></button>
       <button class="command-button" id="truthProgressBtn"><i data-lucide="database-check"></i><span>真值 <strong id="truthProgressCount">--/60</strong></span></button>
       <button class="command-button" id="calibrateBtn"><i data-lucide="scan-line"></i><span>预览校准</span></button>
       <button class="command-button" id="editorSettingsBtn"><i data-lucide="plug-zap"></i><span>编辑器接口</span></button>
@@ -170,30 +204,33 @@
         <div class="body">
           <div class="batch-layout">
             <div class="batch-card">
-              <h3>样本与动作脚本</h3>
-              <label>样本视频 <input id="batchSampleVideo" type="file" accept="video/*"></label>
+              <h3 data-step="01">样本与动作脚本</h3>
+              <label>样本视频（可多选） <input id="batchSampleVideo" type="file" accept="video/*" multiple></label>
+              <div class="batch-video-list" id="batchVideoList"><div class="hint">还没有识别视频。可一次选择多个视频。</div></div>
               <div class="toolrow">
                 <button type="button" id="batchOpenReviewBtn" disabled>打开动作校对</button>
                 <button type="button" id="batchUseCurrentJobBtn">使用当前已确认任务</button>
               </div>
-              <div class="status" id="batchAnalyzeStatus">请选择一个样本视频并识别。这里会直接使用算法识别结果生成变体；需要精修动作时再进入视频动作标注。</div>
+              <div class="status batch-status-note" id="batchAnalyzeStatus">选择样本后先识别动作；如果已经在动作标注页处理过，也可以直接使用当前任务。</div>
             </div>
             <div class="batch-card">
-              <h3>变体组合</h3>
+              <h3 data-step="02">变体配方</h3>
               <div class="batch-grid">
-                <label>背景素材 <select id="batchBackgrounds" multiple size="4">
-                  <option value="ui_background_bg_new_a" selected>赛场深色背景</option>
+                <div class="recipe-field"><label>背景素材 <select id="batchBackgrounds" multiple size="5">
+                  <option value="__default__" selected>保持客户端默认背景</option>
+                  <option value="ui_background_bg_new_a">赛场深色背景</option>
                   <option value="ui_background_1217bg">1217 背景</option>
                   <option value="ui_background_background_1">Background 1</option>
                   <option value="ui_background_image">紫色韵味</option>
-                </select></label>
-                <label>方块素材 <select id="batchBlockStyles" multiple size="4">
-                  <option value="normal" selected>经典彩色块</option>
+                </select></label></div>
+                <div class="recipe-field"><label>方块素材 <select id="batchBlockStyles" multiple size="5">
+                  <option value="__default__" selected>保持客户端默认方块</option>
+                  <option value="normal">经典彩色块</option>
                   <option value="jewel">宝石块</option>
-                </select></label>
-                <label>自定义背景文件 <input id="batchBackgroundFiles" type="file" accept="image/*" multiple></label>
-                <label>自定义方块文件 <input id="batchBlockFiles" type="file" accept="image/*" multiple></label>
-                <label class="wide">输出目录 <input id="batchOutput" value="G:\\爆款素材变体生成器\\变体视频"></label>
+                </select></label></div>
+                <div class="recipe-field"><label>追加上传背景 <input id="batchBackgroundFiles" type="file" accept="image/*" multiple></label><span class="hint">上传后会作为额外背景加入队列，不会覆盖“保持默认”。</span></div>
+                <div class="recipe-field"><label>追加上传方块 <input id="batchBlockFiles" type="file" accept="image/*" multiple></label><span class="hint">上传后会作为额外方块加入队列，不会覆盖“保持默认”。</span></div>
+                <label class="wide">输出目录 <input id="batchOutput" value="G:\爆款素材变体生成器\变体视频"></label>
               </div>
               <div>
                 <div class="hint" style="margin-bottom:6px">输出尺寸</div>
@@ -203,21 +240,22 @@
                   <label class="batch-check"><input type="checkbox" name="batchAspect" value="16:9">16:9 横版</label>
                 </div>
               </div>
-              <div class="toolrow">
-                <button type="button" id="batchBuildQueueBtn">生成任务队列</button>
-                <button type="button" class="primary" id="batchGenerateBtn" disabled>批量生成变体视频</button>
+              <div class="batch-actions">
+                <div class="batch-primary-actions">
+                  <button type="button" id="batchBuildQueueBtn">生成任务队列</button>
+                  <button type="button" class="primary" id="batchGenerateBtn" disabled>批量生成变体视频</button>
+                </div>
               </div>
               <div class="batch-progress" id="batchProgress" hidden>
                 <div class="batch-progress-top"><strong id="batchProgressTitle">Batch generation</strong><span id="batchProgressCount">0/0</span></div>
                 <div class="batch-progress-track" aria-hidden="true"><div class="batch-progress-bar" id="batchProgressBar"></div></div>
                 <div class="batch-progress-detail" id="batchProgressDetail">Waiting</div>
               </div>
-              <div class="hint">自定义图片文件会先记录到队列配置；当前生成仍使用已接入客户端的素材 ID，后续可继续接资源导入接口。</div>
             </div>
           </div>
           <div style="height:14px"></div>
           <div class="batch-queue">
-            <table><thead><tr><th>序号</th><th>背景</th><th>方块</th><th>尺寸</th><th>状态</th><th>输出</th></tr></thead><tbody id="batchQueueRows"></tbody></table>
+            <table><thead><tr><th>序号</th><th>样本</th><th>背景</th><th>方块</th><th>尺寸</th><th>状态</th><th>输出</th></tr></thead><tbody id="batchQueueRows"></tbody></table>
           </div>
         </div>
       </section>
@@ -317,8 +355,12 @@
   const KEY='hit-material-variant-local-v1';
   const state=JSON.parse(localStorage.getItem(KEY)||'{"materials":[],"variants":[]}');
   const $=id=>document.getElementById(id); const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  let batchJob=null,batchQueue=[];
-  const selectedOptions=id=>Array.from($(id).selectedOptions).map(option=>({value:option.value,label:option.textContent.trim()}));
+  let batchJob=null,batchQueue=[],batchVideos=[],batchCustomBackgroundAssets=[],batchCustomBlockAssets=[];
+  const selectedOptions=id=>{const el=$(id);if(!el)return [];if(el.matches('.recipe-picker'))return Array.from(el.querySelectorAll('input:checked')).map(input=>({value:input.value,label:input.parentElement.textContent.trim()}));return Array.from(el.selectedOptions).map(option=>({value:option.value,label:option.textContent.trim()}));};
+  function upgradeRecipePickers(){
+    ['batchBackgrounds','batchBlockStyles'].forEach(id=>{const select=$(id);if(!select||select.dataset.upgraded)return;const picker=document.createElement('div');picker.id=id;picker.className='recipe-picker';picker.dataset.upgraded='true';Array.from(select.options).forEach(option=>{const label=document.createElement('label');const input=document.createElement('input');input.type='checkbox';input.value=option.value;input.checked=option.selected;label.append(input,document.createTextNode(option.textContent.trim()));picker.append(label);});select.replaceWith(picker);});
+  }
+  upgradeRecipePickers();
   const checkedValues=name=>Array.from(document.querySelectorAll(`input[name="${name}"]:checked`)).map(input=>input.value);
   function setBatchStatus(message,kind=''){
     const el=$('batchAnalyzeStatus'); if(!el)return;
@@ -326,7 +368,7 @@
   }
   function renderBatchQueue(){
     const rows=$('batchQueueRows'); if(!rows)return;
-    rows.innerHTML=batchQueue.length?batchQueue.map((item,index)=>`<tr><td>${index+1}</td><td>${esc(item.backgroundLabel)}</td><td>${esc(item.blockLabel)}</td><td>${esc(item.aspectRatio)}</td><td><span class="batch-status-pill ${esc(item.status)}">${esc(item.statusText)}</span></td><td>${item.outputVideo?esc(item.outputVideo):'<span class="hint">待生成</span>'}</td></tr>`).join(''):'<tr><td colspan="6"><div class="empty">还没有任务。选择素材和尺寸后点击“生成任务队列”。</div></td></tr>';
+    rows.innerHTML=batchQueue.length?batchQueue.map((item,index)=>`<tr><td>${index+1}</td><td>${esc(item.sampleLabel||'--')}</td><td>${esc(item.backgroundLabel)}</td><td>${esc(item.blockLabel)}</td><td>${esc(item.aspectRatio)}</td><td><span class="batch-status-pill ${esc(item.status)}">${esc(item.statusText)}</span></td><td>${item.outputVideo?esc(item.outputVideo):'<span class="hint">待生成</span>'}</td></tr>`).join(''):'<tr><td colspan="7"><div class="empty">还没有任务。选择视频、素材和尺寸后点击“生成任务队列”。</div></td></tr>';
     refreshIcons();
   }
   function updateBatchProgress(done,total,detail='',activeIndex=-1){
@@ -356,12 +398,62 @@
     if(!response.ok||!data.ok)throw new Error(data.error||'asset upload failed');
     return data.assets||[];
   }
+  function selectedBackgroundRecipes(uploadedAssets=[]){
+    const selected=selectedOptions('batchBackgrounds').map(background=>background.value==='__default__'
+      ? {backgroundId:'',backgroundLabel:'默认背景'}
+      : {backgroundId:background.value,backgroundLabel:background.label});
+    const uploaded=uploadedAssets.map(asset=>({backgroundId:asset.id,backgroundLabel:asset.name||asset.id}));
+    return [...selected,...uploaded];
+  }
+  function selectedBlockRecipes(uploadedAssets=[]){
+    const selected=selectedOptions('batchBlockStyles').map(block=>block.value==='__default__'
+      ? {blockStyle:'default',blockResourceId:'',blockLabel:'默认方块'}
+      : {blockStyle:block.value,blockResourceId:'',blockLabel:block.label});
+    const uploaded=uploadedAssets.map(asset=>({blockStyle:'custom',blockResourceId:asset.id,blockLabel:asset.name||asset.id}));
+    return [...selected,...uploaded];
+  }
+  function renderBatchVideos(){
+    const el=$('batchVideoList'); if(!el)return;
+    const bgOptions=selectedOptions('batchBackgrounds').map(x=>`<label><input type="checkbox" data-video-bg="__INDEX__" value="${esc(x.value)}" checked>${esc(x.label)}</label>`).join('')+batchCustomBackgroundAssets.map(x=>`<label><input type="checkbox" data-video-bg="__INDEX__" value="${esc(x.id)}" checked>${esc(x.name||x.id)}</label>`).join('');
+    const blockOptions=selectedOptions('batchBlockStyles').map(x=>`<label><input type="checkbox" data-video-block="__INDEX__" value="${esc(x.value)}" checked>${esc(x.label)}</label>`).join('')+batchCustomBlockAssets.map(x=>`<label><input type="checkbox" data-video-block="__INDEX__" value="${esc(x.id)}" checked>${esc(x.name||x.id)}</label>`).join('');
+    el.innerHTML=batchVideos.length?batchVideos.map((video,index)=>`<div class="batch-video-item"><div class="batch-video-top"><span class="batch-video-index">${index+1}</span><span class="batch-video-name" title="${esc(video.fileName)}">${esc(video.fileName)}</span><span class="batch-video-state">${video.cached?'已复用':'已识别'}</span></div><div class="batch-video-recipes"><div><div class="hint">这个视频使用的背景</div><div class="recipe-picker">${bgOptions.replaceAll('__INDEX__',String(index))}</div></div><div><div class="hint">这个视频使用的方块</div><div class="recipe-picker">${blockOptions.replaceAll('__INDEX__',String(index))}</div></div></div></div>`).join(''):'<div class="hint">还没有识别视频。可一次选择多个视频。</div>';
+  }
+  const videoRecipes=(index)=>({backgrounds:Array.from(document.querySelectorAll(`[data-video-bg="${index}"]:checked`)).map(x=>x.value==='__default__'?{backgroundId:'',backgroundLabel:'默认背景'}:{backgroundId:x.value,backgroundLabel:x.parentElement.textContent.trim()}),blocks:Array.from(document.querySelectorAll(`[data-video-block="${index}"]:checked`)).map(x=>x.value==='__default__'?{blockStyle:'default',blockResourceId:'',blockLabel:'默认方块'}:{blockStyle:batchCustomBlockAssets.some(a=>a.id===x.value)?'custom':x.value,blockResourceId:batchCustomBlockAssets.some(a=>a.id===x.value)?x.value:'',blockLabel:x.parentElement.textContent.trim()})});
+  async function analyzeBatchVideos(){
+    const files=Array.from($('batchSampleVideo').files||[]);
+    if(!files.length)throw new Error('请先选择至少一个样本视频。');
+    $('batchAnalyzeBtn').disabled=true; batchVideos=[]; batchJob=null;
+    try{
+      for(let index=0;index<files.length;index++){
+        const file=files[index]; setBatchStatus(`正在识别第 ${index+1}/${files.length} 个样本：${file.name}`);
+        const form=new FormData(); form.append('video',file);
+        const response=await fetch('http://127.0.0.1:8765/api/video/analyze',{method:'POST',body:form});
+        const data=await response.json();
+        if(!response.ok||!data.ok)throw new Error(`${file.name}: ${data.error||'识别失败'}`);
+        const analysis=data.analysis||{};
+        batchVideos.push({jobId:data.jobId,fileName:file.name,analysis,cached:Boolean(data.cached)});
+        if(index===0){batchJob=data; rebuildJob=data; actionsConfirmed=false; actionDrafts=structuredClone(analysis.reviewActions||[]); referenceInteractionDrafts=structuredClone(analysis.timeline?.referenceInteractions||[]); $('rebuildName').value=file.name.replace(/\.[^.]+$/,'')+'_批量变体'; $('rebuildOptions').hidden=true; $('fullReplayBtn').disabled=true; $('batchOpenReviewBtn').disabled=false;}
+        renderBatchVideos();
+      }
+      setBatchStatus(`已识别 ${batchVideos.length} 个样本视频，可以生成组合队列。`,'success');
+      return batchVideos;
+    }finally{$('batchAnalyzeBtn').disabled=false;}
+  }
   function batchCurrentJobReady(){
     return Boolean(batchJob&&batchJob.jobId);
   }
   function useCurrentJobForBatch(){
     if(!rebuildJob||!rebuildJob.jobId)return false;
     batchJob=rebuildJob;
+    if(!batchVideos.length){
+      batchVideos=[{
+        jobId:rebuildJob.jobId,
+        fileName:$('rebuildName').value.trim()||rebuildJob.jobId,
+        analysis:rebuildJob.analysis||{},
+        cached:true,
+      }];
+      renderBatchVideos();
+    }
     $('batchOpenReviewBtn').disabled=false;
     $('batchGenerateBtn').disabled=!batchQueue.length;
     return true;
@@ -469,27 +561,6 @@
   const uid=()=>crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2);
   const save=()=>localStorage.setItem(KEY,JSON.stringify(state));
   let rebuildJob=null, actionDrafts=[], referenceInteractionDrafts=[], referenceCandidateDrafts=[], actionsConfirmed=false, sourceCalibrationPoints=[];
-  $('batchAnalyzeBtn').onclick=async()=>{
-    const file=$('batchSampleVideo').files[0];
-    if(!file){setBatchStatus('请先选择一个样本视频。','error');return;}
-    setBatchStatus('正在识别样本视频，请稍候…');
-    $('batchAnalyzeBtn').disabled=true;
-    try{
-      const form=new FormData(); form.append('video',file);
-      const response=await fetch('http://127.0.0.1:8765/api/video/analyze',{method:'POST',body:form});
-      const data=await response.json();
-      if(!data.ok)throw new Error(data.error||'识别失败');
-      batchJob=data; rebuildJob=data; actionsConfirmed=false;
-      const analysis=data.analysis||{};
-      actionDrafts=structuredClone(analysis.reviewActions||[]);
-      referenceInteractionDrafts=structuredClone(analysis.timeline?.referenceInteractions||[]);
-      $('rebuildName').value=file.name.replace(/\.[^.]+$/,'')+' · 批量变体';
-      $('rebuildOptions').hidden=true; $('fullReplayBtn').disabled=true;
-      $('batchOpenReviewBtn').disabled=false; $('batchGenerateBtn').disabled=!batchQueue.length;
-      setBatchStatus(`${data.cached?'已复用样本识别缓存：':'识别完成：'}${actionDrafts.length} 个动作。可以直接生成队列；如需精修再打开动作校对。`,'success');
-    }catch(error){setBatchStatus(`样本识别失败：${error.message}`,'error');}
-    finally{$('batchAnalyzeBtn').disabled=false;}
-  };
   $('batchOpenReviewBtn').onclick=()=>{
     if(!batchJob)return;
     rebuildJob=batchJob;
@@ -499,85 +570,55 @@
     setAnnotationStage('workbench'); renderActionReview(); $('videoDialog').showModal();
   };
   $('batchUseCurrentJobBtn').onclick=()=>{
-    if(!rebuildJob||!rebuildJob.jobId){setBatchStatus('当前没有可用的视频任务，请先上传并识别样本。','error');return;}
-    batchJob=rebuildJob; $('batchOpenReviewBtn').disabled=false; $('batchGenerateBtn').disabled=!batchCurrentJobReady();
-    setBatchStatus(batchCurrentJobReady()?'已使用当前任务，可以生成队列。':'当前没有可用任务，请先上传并识别样本。',batchCurrentJobReady()?'success':'');
-  };
-  $('batchBuildQueueBtn').onclick=()=>{
-    const backgrounds=selectedOptions('batchBackgrounds'),blocks=selectedOptions('batchBlockStyles'),aspects=checkedValues('batchAspect');
-    if(!backgrounds.length||!blocks.length||!aspects.length){setBatchStatus('请至少选择一个背景、一个方块素材和一个输出尺寸。','error');return;}
-    const customBackgrounds=Array.from($('batchBackgroundFiles').files||[]).map(file=>file.name);
-    const customBlocks=Array.from($('batchBlockFiles').files||[]).map(file=>file.name);
-    batchQueue=[];
-    for(const background of backgrounds)for(const block of blocks)for(const aspectRatio of aspects){
-      batchQueue.push({backgroundId:background.value,backgroundLabel:background.label,blockStyle:block.value,blockLabel:block.label,aspectRatio,customBackgrounds,customBlocks,status:'idle',statusText:'待生成',outputVideo:''});
-    }
-    $('batchGenerateBtn').disabled=!batchQueue.length||!batchCurrentJobReady();
-    renderBatchQueue();
-    setBatchStatus(`已生成 ${batchQueue.length} 个变体任务${batchCurrentJobReady()?'，可以开始批量生成。':'。请先上传并识别样本视频。'}`,batchCurrentJobReady()?'success':'');
-  };
-  $('batchGenerateBtn').onclick=async()=>{
-    if(!batchCurrentJobReady()){setBatchStatus('请先上传并识别样本视频。','error');return;}
-    if(!batchQueue.length){setBatchStatus('请先生成任务队列。','error');return;}
-    $('batchGenerateBtn').disabled=true;
-    const baseName=($('rebuildName').value.trim()||batchJob.jobId||'批量变体').replace(/\s+/g,'_');
-    for(let index=0;index<batchQueue.length;index++){
-      const row=batchQueue[index]; row.status='running'; row.statusText='启动中'; renderBatchQueue();
-      try{
-        const name=`${baseName}_${index+1}_${row.aspectRatio}_${row.blockLabel}_${row.backgroundLabel}`;
-        const response=await fetch('http://127.0.0.1:8765/api/video/replay',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jobId:batchJob.jobId,name,outputDirectory:$('batchOutput').value.trim(),backgroundId:row.backgroundId,blockStyle:row.blockStyle,aspectRatio:row.aspectRatio})});
-        const data=await response.json(); if(!data.ok)throw new Error(data.error||'启动失败');
-        row.outputVideo=data.outputVideo||''; row.statusText='生成中'; renderBatchQueue();
-        await waitBatchStatus(batchJob.jobId,row);
-      }catch(error){
-        row.status='failed'; row.statusText=error.message; renderBatchQueue(); setBatchStatus(`第 ${index+1} 个任务失败：${error.message}`,'error'); $('batchGenerateBtn').disabled=false; return;
-      }
-    }
-    setBatchStatus(`批量生成完成：${batchQueue.length} 个变体视频。`,'success'); $('batchGenerateBtn').disabled=false;
+    if(!useCurrentJobForBatch()){setBatchStatus('当前没有可用的视频任务，请先上传并识别样本。','error');return;}
+    setBatchStatus('已使用当前任务，可以为它选择配方并生成队列。','success');
   };
 
   $('batchBuildQueueBtn').onclick=async()=>{
     const aspects=checkedValues('batchAspect');
-    const builtinBackgrounds=selectedOptions('batchBackgrounds');
-    const builtinBlocks=selectedOptions('batchBlockStyles').map(block=>({blockStyle:block.value,blockResourceId:'',blockLabel:block.label}));
-    if(!aspects.length){setBatchStatus('Please select at least one output size.','error');return;}
+    if(!aspects.length){setBatchStatus('请至少选择一个输出尺寸。','error');return;}
     $('batchBuildQueueBtn').disabled=true;
     try{
-      setBatchStatus('Uploading custom images to Unity SharedImageLibrary...');
+      setBatchStatus('正在把自定义图片导入 Unity 共享素材库…');
       const [customBackgroundAssets,customBlockAssets]=await Promise.all([
         uploadBatchAssets('background','batchBackgroundFiles'),
         uploadBatchAssets('block','batchBlockFiles'),
       ]);
-      const customBackgrounds=customBackgroundAssets.map(asset=>({backgroundId:asset.id,backgroundLabel:asset.name||asset.id}));
-      const customBlocks=customBlockAssets.map(asset=>({blockStyle:'custom',blockResourceId:asset.id,blockLabel:asset.name||asset.id}));
-      const backgrounds=customBackgrounds.length?customBackgrounds:builtinBackgrounds.map(background=>({backgroundId:background.value,backgroundLabel:background.label}));
-      const blocks=customBlocks.length?customBlocks:builtinBlocks;
-      if(!backgrounds.length||!blocks.length){setBatchStatus('Please select or upload at least one background and one block asset.','error');return;}
+      batchCustomBackgroundAssets=customBackgroundAssets; batchCustomBlockAssets=customBlockAssets;
+      renderBatchVideos();
+      const backgrounds=selectedBackgroundRecipes(customBackgroundAssets);
+      const blocks=selectedBlockRecipes(customBlockAssets);
+      if(!backgrounds.length||!blocks.length){setBatchStatus('请至少选择或上传一个背景和一个方块素材。','error');return;}
+      if(!batchVideos.length){setBatchStatus('请先识别至少一个样本视频。','error');return;}
       batchQueue=[];
-      for(const background of backgrounds)for(const block of blocks)for(const aspectRatio of aspects){
-        batchQueue.push({...background,...block,aspectRatio,status:'idle',statusText:'pending',outputVideo:''});
+      for(let videoIndex=0;videoIndex<batchVideos.length;videoIndex++){
+        const video=batchVideos[videoIndex];
+        const recipes=videoRecipes(videoIndex);
+        for(const background of recipes.backgrounds)for(const block of recipes.blocks)for(const aspectRatio of aspects){
+          batchQueue.push({...background,...block,aspectRatio,sampleJobId:video.jobId,sampleLabel:video.fileName,status:'idle',statusText:'pending',outputVideo:''});
+        }
       }
       $('batchGenerateBtn').disabled=!batchQueue.length;
       renderBatchQueue();
-      const assetMode=`Using ${customBackgrounds.length?'uploaded':'selected'} background and ${customBlocks.length?'uploaded':'selected'} block assets.`;
-      setBatchStatus(`Queue ready: ${batchQueue.length} variant jobs. ${assetMode} Click batch generate; the sample will be analyzed automatically if needed.`,batchCurrentJobReady()?'success':'');
+      const assetMode=`已加入 ${backgrounds.length} 个背景、${blocks.length} 个方块`;
+      setBatchStatus(`已生成 ${batchQueue.length} 条任务：${batchVideos.length} 个视频 × ${assetMode} × ${aspects.length} 个尺寸。`,batchCurrentJobReady()?'success':'');
     }catch(error){
-      setBatchStatus(`Asset upload failed: ${error.message}`,'error');
+      setBatchStatus(`素材导入失败：${error.message}`,'error');
     }finally{
       $('batchBuildQueueBtn').disabled=false;
     }
   };
   $('batchAnalyzeBtn').onclick=async()=>{
     try{
-      const data=await analyzeBatchSample();
+      await analyzeBatchVideos();
       $('batchGenerateBtn').disabled=!batchQueue.length;
-      setBatchStatus(`${data.cached?'已复用样本识别缓存：':'识别完成：'}${actionDrafts.length} 个动作。可以直接批量生成；如需精修再打开动作校对。`,'success');
     }catch(error){
       setBatchStatus(`样本识别失败：${error.message}`,'error');
     }
   };
   $('batchGenerateBtn').onclick=async()=>{
-    if(!batchQueue.length){setBatchStatus('Please build the variant queue first.','error');return;}
+    if(!batchQueue.length){setBatchStatus('请先生成任务队列。','error');return;}
+    if(!batchVideos.length){setBatchStatus('请先识别样本视频。','error');return;}
     $('batchGenerateBtn').disabled=true;
     updateBatchProgress(0,batchQueue.length,batchCurrentJobReady()?'Using prepared sample analysis...':'Preparing sample analysis...');
     try{
@@ -590,15 +631,15 @@
       $('batchGenerateBtn').disabled=false;
       return;
     }
-    const baseName=($('rebuildName').value.trim()||batchJob.jobId||'batch_variant').replace(/\s+/g,'_');
+    const baseName=($('rebuildName').value.trim()||'batch_variant').replace(/\s+/g,'_');
     for(let index=0;index<batchQueue.length;index++){
       const row=batchQueue[index]; row.status='running'; row.statusText='starting'; renderBatchQueue(); updateBatchProgress(index,batchQueue.length,`Starting job ${index+1}/${batchQueue.length}`,index);
       try{
         const name=`${baseName}_${index+1}_${row.aspectRatio}_${row.blockLabel}_${row.backgroundLabel}`;
-        const response=await fetch('http://127.0.0.1:8765/api/video/replay',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jobId:batchJob.jobId,name,outputDirectory:$('batchOutput').value.trim(),backgroundId:row.backgroundId,blockStyle:row.blockStyle,blockResourceId:row.blockResourceId||'',aspectRatio:row.aspectRatio,allowDraftReplay:true})});
+        const response=await fetch('http://127.0.0.1:8765/api/video/replay',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jobId:row.sampleJobId||batchJob.jobId,name,outputDirectory:$('batchOutput').value.trim(),backgroundId:row.backgroundId,blockStyle:row.blockStyle,blockResourceId:row.blockResourceId||'',aspectRatio:row.aspectRatio,allowDraftReplay:true})});
         const data=await response.json(); if(!data.ok)throw new Error(data.error||'start failed');
         row.outputVideo=data.outputVideo||''; row.statusText='generating'; renderBatchQueue(); updateBatchProgress(index,batchQueue.length,`Generating job ${index+1}/${batchQueue.length}`,index);
-        await waitBatchStatus(batchJob.jobId,row,index,batchQueue.length,index);
+        await waitBatchStatus(row.sampleJobId||batchJob.jobId,row,index,batchQueue.length,index);
       }catch(error){
         row.status='failed'; row.statusText=error.message; renderBatchQueue(); updateBatchProgress(index,batchQueue.length,`Job ${index+1} failed: ${error.message}`,index); setBatchStatus(`Job ${index+1} failed: ${error.message}`,'error'); $('batchGenerateBtn').disabled=false; return;
       }
