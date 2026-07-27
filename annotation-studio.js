@@ -425,6 +425,49 @@
     return `<div class="segmented ${className}">${values.map(([value, label]) => `<button type="button" data-value="${value}" class="btn btn-outline-secondary ${String(value) === String(selected) ? "active" : ""}" onclick="${handler}(${index},'${value}')">${label}</button>`).join("")}</div>`;
   }
 
+  // 落子前托盘标注：复用形状网格交互（shapeGrid/toggleActionCell 同款），
+  // 每个动作在 action.trayBefore 上挂三个槽的形状真值。
+  function traySlotShape(action, slot) {
+    const slots = action.trayBefore && action.trayBefore.slots;
+    const entry = slots ? slots[slot] : null;
+    return (entry && entry.shape) || [];
+  }
+
+  function ensureTrayBefore(action) {
+    if (!action.trayBefore || !Array.isArray(action.trayBefore.slots)) {
+      action.trayBefore = {
+        time: currentAnnotationTime(),
+        frameIndex: currentAnnotationFrame(),
+        slots: [0, 1, 2].map(slot => ({ slot, occupied: false, shape: [] })),
+      };
+    }
+    return action.trayBefore;
+  }
+
+  function trayGrid(action, slot, index) {
+    const shape = traySlotShape(action, slot);
+    const active = new Set(shape.map(cell => `${cell.row}:${cell.col}`));
+    const maxRow = Math.max(2, ...shape.map(cell => cell.row));
+    const maxCol = Math.max(2, ...shape.map(cell => cell.col));
+    let cells = "";
+    for (let row = 0; row <= maxRow; row++) for (let col = 0; col <= maxCol; col++) {
+      cells += `<button type="button" class="shape-cell ${active.has(`${row}:${col}`) ? "on" : ""}" aria-label="${["左", "中", "右"][slot]}槽形状 ${row},${col}" onclick="window.toggleTrayCell(${index},${slot},${row},${col})"></button>`;
+    }
+    return `<div class="shape-grid" style="grid-template-columns:repeat(${maxCol + 1},22px)">${cells}</div>`;
+  }
+
+  function trayBeforePanelHtml(action, index) {
+    const tray = ensureTrayBefore(action);
+    const slotsHtml = [0, 1, 2].map(slot => {
+      const entry = tray.slots[slot] || { occupied: false, shape: [] };
+      const occupied = !!entry.occupied;
+      const toggle = `<div class="segmented tray-occ"><button type="button" class="btn btn-outline-secondary ${occupied ? "active" : ""}" onclick="window.setTraySlotOccupied(${index},${slot},true)">有</button><button type="button" class="btn btn-outline-secondary ${occupied ? "" : "active"}" onclick="window.setTraySlotOccupied(${index},${slot},false)">空</button></div>`;
+      const body = occupied ? trayGrid(action, slot, index) : `<div class="tray-empty-note">空槽</div>`;
+      return `<div class="tray-slot"><div class="tray-slot-head"><span>${["左", "中", "右"][slot]}槽</span>${toggle}</div>${body}</div>`;
+    }).join("");
+    return `<section class="control-section tray-before-panel"><div class="tray-before-head"><h4>落子前托盘</h4><button type="button" class="command-button" onclick="window.setTrayFrameToCurrent(${index})" title="把托盘真值绑定到当前播放器画面">用当前帧 · #${tray.frameIndex}</button></div><div class="tray-slots">${slotsHtml}</div></section>`;
+  }
+
   function annotationBoardHtml(action, index, state) {
     const editing = studio.boardEditIndex === index;
     const overlap = new Set(state.overlaps);
@@ -465,7 +508,7 @@
     const state = actionPlacementState(action);
     const status = actionState(action);
     const timeIssues = rangeErrors(action);
-    return `<section class="annotation-workbench"><div class="workbench-header"><div class="workbench-title"><h3>步骤 ${action.stepIndex}</h3><span>ROUND ${Math.floor((action.stepIndex - 1) / 3) + 1}</span><span class="tag ${status.kind === "review" ? "gold" : status.kind === "error" ? "" : "gray"}">${status.text}</span></div><div class="workbench-actions"><button type="button" class="command-button" onclick="addReferenceInteraction(${index})" title="按当前视频帧添加一次拿起后又放回的动作"><i data-lucide="mouse-pointer-2"></i><span>添加撤回</span></button><button type="button" class="command-button" onclick="addAnnotationStepBefore(${index})" title="在当前步骤前插入一个正常落块步骤"><i data-lucide="list-plus"></i><span>在此前添加</span></button><button type="button" class="command-button" onclick="addAnnotationStepAfter(${index})" title="在当前步骤后插入一个正常落块步骤"><i data-lucide="list-plus"></i><span>在此后添加</span></button><button type="button" class="command-button ${status.kind === "ok" ? "" : "primary"}" onclick="verifyAnnotationStep(${index})" ${status.kind === "error" ? "disabled" : ""}><i data-lucide="check-check"></i><span>${status.kind === "ok" ? "已确认本步" : "确认本步"}</span></button><button type="button" class="icon-button danger" onclick="deleteAnnotationStep(${index})" aria-label="删除步骤 ${action.stepIndex}" title="删除步骤"><i data-lucide="trash-2"></i></button></div></div><div class="workbench-body">${evidenceBandHtml(action)}<div class="workbench-grid"><div class="control-column"><section class="control-section"><div class="range-heading"><h4>时间区间</h4>${timeIssues.length ? `<span class="placement-error">${esc(timeIssues[0])}</span>` : ""}</div>${rangeEditorHtml(action, index)}</section><section class="control-section"><h4>来源槽位</h4>${segmentHtml("", [[0, "左侧"], [1, "中间"], [2, "右侧"], [-1, "待确认"]], action.sourceSlot, "setAnnotationSlot", index)}</section><section class="control-section shape-target-row"><div class="shape-editor"><h4>方块形状</h4>${shapeGrid(action, index)}</div><div><h4>棋盘落点</h4><div class="target-inputs"><label>行<input type="number" min="0" max="${state.rows - 1}" value="${action.target.row}" onchange="setAnnotationTargetAxis(${index},'row',this.value)"></label><label>列<input type="number" min="0" max="${state.cols - 1}" value="${action.target.col}" onchange="setAnnotationTargetAxis(${index},'col',this.value)"></label></div></div></section><section class="control-section"><h4>消除检测</h4>${segmentHtml("clear-mode", [["on", "启用"], ["off", "禁用"], ["unknown", "待确认"]], action.clearState, "setAnnotationClear", index)}</section>${candidateHtml(action, index)}<label class="annotation-notes">标注备注<textarea placeholder="记录遮挡、多解或特殊判断依据" onchange="setAnnotationNotes(${index},this.value)">${esc(action.annotationNotes || "")}</textarea></label></div><div class="board-column">${annotationBoardHtml(action, index, state)}</div></div></div></section>`;
+    return `<section class="annotation-workbench"><div class="workbench-header"><div class="workbench-title"><h3>步骤 ${action.stepIndex}</h3><span>ROUND ${Math.floor((action.stepIndex - 1) / 3) + 1}</span><span class="tag ${status.kind === "review" ? "gold" : status.kind === "error" ? "" : "gray"}">${status.text}</span></div><div class="workbench-actions"><button type="button" class="command-button" onclick="addReferenceInteraction(${index})" title="按当前视频帧添加一次拿起后又放回的动作"><i data-lucide="mouse-pointer-2"></i><span>添加撤回</span></button><button type="button" class="command-button" onclick="addAnnotationStepBefore(${index})" title="在当前步骤前插入一个正常落块步骤"><i data-lucide="list-plus"></i><span>在此前添加</span></button><button type="button" class="command-button" onclick="addAnnotationStepAfter(${index})" title="在当前步骤后插入一个正常落块步骤"><i data-lucide="list-plus"></i><span>在此后添加</span></button><button type="button" class="command-button ${status.kind === "ok" ? "" : "primary"}" onclick="verifyAnnotationStep(${index})" ${status.kind === "error" ? "disabled" : ""}><i data-lucide="check-check"></i><span>${status.kind === "ok" ? "已确认本步" : "确认本步"}</span></button><button type="button" class="icon-button danger" onclick="deleteAnnotationStep(${index})" aria-label="删除步骤 ${action.stepIndex}" title="删除步骤"><i data-lucide="trash-2"></i></button></div></div><div class="workbench-body">${evidenceBandHtml(action)}<div class="workbench-grid"><div class="control-column"><section class="control-section"><div class="range-heading"><h4>时间区间</h4>${timeIssues.length ? `<span class="placement-error">${esc(timeIssues[0])}</span>` : ""}</div>${rangeEditorHtml(action, index)}</section><section class="control-section"><h4>来源槽位</h4>${segmentHtml("", [[0, "左侧"], [1, "中间"], [2, "右侧"], [-1, "待确认"]], action.sourceSlot, "setAnnotationSlot", index)}</section><section class="control-section shape-target-row"><div class="shape-editor"><h4>方块形状</h4>${shapeGrid(action, index)}</div><div><h4>棋盘落点</h4><div class="target-inputs"><label>行<input type="number" min="0" max="${state.rows - 1}" value="${action.target.row}" onchange="setAnnotationTargetAxis(${index},'row',this.value)"></label><label>列<input type="number" min="0" max="${state.cols - 1}" value="${action.target.col}" onchange="setAnnotationTargetAxis(${index},'col',this.value)"></label></div></div></section><section class="control-section"><h4>消除检测</h4>${segmentHtml("clear-mode", [["on", "启用"], ["off", "禁用"], ["unknown", "待确认"]], action.clearState, "setAnnotationClear", index)}</section>${trayBeforePanelHtml(action, index)}${candidateHtml(action, index)}<label class="annotation-notes">标注备注<textarea placeholder="记录遮挡、多解或特殊判断依据" onchange="setAnnotationNotes(${index},this.value)">${esc(action.annotationNotes || "")}</textarea></label></div><div class="board-column">${annotationBoardHtml(action, index, state)}</div></div></div></section>`;
   }
 
   function summaryState(entries) {
@@ -1417,6 +1460,56 @@
     actionsConfirmed = false;
     action.manuallyVerified = false;
     $("fullReplayBtn").disabled = true;
+    studio.activeIndex = index;
+    refreshWorkbench();
+  };
+
+  function currentAnnotationTime() {
+    const player = studio.player;
+    const time = player && typeof player.currentTime === "function" ? player.currentTime() : 0;
+    return Number.isFinite(time) ? Math.round(time * 1000) / 1000 : 0;
+  }
+
+  function currentAnnotationFrame() {
+    const fps = Number(rebuildJob?.analysis?.sourceFrameRate || rebuildJob?.analysis?.video?.frameRate || 30) || 30;
+    return Math.round(currentAnnotationTime() * fps);
+  }
+
+  window.setTraySlotOccupied = (index, slot, occupied) => {
+    const action = actionDrafts[index];
+    recordAnnotationHistory(`步骤 ${action.stepIndex} 的${["左", "中", "右"][slot]}槽托盘`);
+    const tray = ensureTrayBefore(action);
+    tray.slots[slot].occupied = !!occupied;
+    if (!occupied) tray.slots[slot].shape = [];
+    actionsConfirmed = false;
+    studio.activeIndex = index;
+    refreshWorkbench();
+  };
+
+  window.toggleTrayCell = (index, slot, row, col) => {
+    const action = actionDrafts[index];
+    recordAnnotationHistory(`步骤 ${action.stepIndex} 的${["左", "中", "右"][slot]}槽形状`);
+    const tray = ensureTrayBefore(action);
+    const entry = tray.slots[slot];
+    entry.occupied = true;
+    const at = entry.shape.findIndex(cell => cell.row === row && cell.col === col);
+    if (at >= 0) entry.shape.splice(at, 1); else entry.shape.push({ row, col });
+    if (entry.shape.length) {
+      const minRow = Math.min(...entry.shape.map(cell => cell.row));
+      const minCol = Math.min(...entry.shape.map(cell => cell.col));
+      entry.shape = entry.shape.map(cell => ({ row: cell.row - minRow, col: cell.col - minCol }));
+    }
+    actionsConfirmed = false;
+    studio.activeIndex = index;
+    refreshWorkbench();
+  };
+
+  window.setTrayFrameToCurrent = (index) => {
+    const action = actionDrafts[index];
+    recordAnnotationHistory(`步骤 ${action.stepIndex} 的托盘帧`);
+    const tray = ensureTrayBefore(action);
+    tray.time = currentAnnotationTime();
+    tray.frameIndex = currentAnnotationFrame();
     studio.activeIndex = index;
     refreshWorkbench();
   };
